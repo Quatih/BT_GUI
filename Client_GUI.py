@@ -4,7 +4,7 @@ from bluetooth import *
 import time
 import threading
 import select
-
+import atexit
 # Class for setting up a connection with a server application
 class BTServer:
     def __init__(self, name=None):
@@ -16,17 +16,17 @@ class BTServer:
         self.host = match["host"]
         print ("connecting to ", host)
         self.sock=BluetoothSocket( RFCOMM )
-        sock.connect((host, port))
-        sock.send("hello!!")
-        sock.close()
+        self.sock.connect((host, port))
+        self.sock.send("hello!!")
+        self.sock.close()
 
     # returns list of servers with the matching service
     def find(self):
         try: 
-            service_matches = find_service( name = self.name, uuid = SERIAL_PORT_CLASS, address = None)
+            service_matches = find_service( name = self.name, uuid = SERIAL_PORT_CLASS)
             if len(service_matches) == 0:
-                print ("couldn’t find the service!")
-                return []
+                print ("couldn’t find the service ", self.name)
+                return [] 
             else:
                 return service_matches[0]
         except:
@@ -35,7 +35,7 @@ class BTServer:
 
 
     def receive(self):
-        data = client_sock.recv(1024)
+        data = self.sock.recv(1024)
         print ("received [%s]" % data)
         return data
 
@@ -43,8 +43,8 @@ class BTServer:
         self.client_sock.send(data)
 
     def close(self): 
-        self.client_sock.close()
-        self.server_sock.close() 
+        self.sock.close()
+        
     
 class Client_GUI(wx.Frame):
     device_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
