@@ -1,6 +1,6 @@
 import os
 import wx
-import bluetooth
+from bluetooth import *
 import time
 import threading
 import select
@@ -8,7 +8,6 @@ import atexit
 
 #Wrapper for setting up connection, receiving and sending to a BT device
 class BTDevice:
-    port = None
     server_sock = None
     client_sock = None
     client_address = None
@@ -18,16 +17,17 @@ class BTDevice:
         self.name = name
 
     def connect(self):
-        self.port = get_available_port( RFCOMM )
-        self.server_sock=BluetoothSocket( RFCOMM )
+        #self.port = get_available_port( RFCOMM )
+        self.server_sock=  BluetoothSocket( RFCOMM )
         #self.server_sock.setblocking(False)
-        self.server_sock.bind(("",port))
+        self.server_sock.bind(("",PORT_ANY))
         self.server_sock.listen(1)
-        advertise_service( server_sock, "BT_GUI", service_classes = [ SERIAL_PORT_CLASS ], profiles = [ SERIAL_PORT_PROFILE ] )
+        advertise_service( self.server_sock, "BT_GUI", service_classes = [ SERIAL_PORT_CLASS ], profiles = [ SERIAL_PORT_PROFILE ] )
         
         self.client_sock,self.client_address = self.server_sock.accept()
         print ("Accepted connection from ",client_info)
         connected = True
+        stop_advertising(self.server_sock)
         
     def receive(self):
         data = client_sock.recv(1024)
@@ -105,6 +105,7 @@ class Server_GUI(wx.Frame):
         dlg.Destroy()
 
     def OnScan(self,e):
+        print("Advertising")
         thread = threading.Thread(target=self.BTScan)
         thread.start()
     
@@ -130,6 +131,8 @@ class Server_GUI(wx.Frame):
 
     def OnExit(self,e):
         self.Close(True)  # Close the frame.
+        exit()
+        
     def exit(self):
         if not self.connected_devices:
             pass
