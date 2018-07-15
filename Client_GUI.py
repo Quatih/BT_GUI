@@ -25,7 +25,11 @@ class BTServer:
         try: 
             service_matches = find_service( name = self.name, uuid = SERIAL_PORT_CLASS)
             if len(service_matches) == 0:
+<<<<<<< HEAD
                 print ("couldn’t find the service", self.name)
+=======
+                print ("couldn’t find the service ", self.name)
+>>>>>>> ddabfaef047a82ee47e6f3931b4d3739f6eca07a
                 return [] 
             else:
                 return service_matches[0]
