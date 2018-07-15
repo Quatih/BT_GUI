@@ -139,7 +139,7 @@ class Client_GUI(wx.Frame):
             sendThread = threading.Thread(target=self.SendPacket)
             thread.start()
     def SendPacket(self):
-        threading.Timer(10, SendPacket).start()
+        threading.Timer(1, SendPacket).start()
         self.server.send("Test packet!")
 
     def BTScan(self):
@@ -155,7 +155,13 @@ class Client_GUI(wx.Frame):
     def OnExit(self,e):
         self.Close(True)  # Close the frame.
 
+    def exit(self):
+        if not self.server is None:
+            self.server.close()
+
 app = wx.App(False)
 frame = Client_GUI(None, "BT_Client")
-
+def exit_handler():
+    frame.exit()
+atexit.register(exit_handler)
 app.MainLoop()
