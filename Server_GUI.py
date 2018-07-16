@@ -41,11 +41,7 @@ class BTDevice:
         if not self.server_sock is None:
             self.server_sock.close()
         if not self.client_sock is None:
-<<<<<<< HEAD
             self.client_sock.close()        
-=======
-            self.client_sock.close()     
->>>>>>> e8ebea92224bf738a0494260bc5c636926abc454
     
 class Server_GUI(wx.Frame):
     device_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
@@ -119,7 +115,6 @@ class Server_GUI(wx.Frame):
         if not self.matches:
             pass
         else:
-<<<<<<< HEAD
             self.connect(matches[self.lst.GetSelection()])
             sendThread = threading.Thread(target=self.ReceivePackets)
             thread.start()
@@ -127,15 +122,6 @@ class Server_GUI(wx.Frame):
     def ReceivePackets(self):
         threading.Timer(1, ReceivePackets).start()
         for dev in connected_devices:
-=======
-            self.connect(self.matches[self.lst.GetSelection()])
-            sendThread = threading.Thread(target=self.ReceivePackets)
-            sendThread.start()
-
-    def ReceivePackets(self):
-        threading.Timer(1, self.ReceivePackets).start()
-        for dev in self.connected_devices:
->>>>>>> e8ebea92224bf738a0494260bc5c636926abc454
             data = dev.receive()
             self.text.appendText(data + "\n")
 
