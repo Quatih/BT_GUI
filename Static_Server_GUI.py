@@ -142,5 +142,5 @@ class Server_GUI(wx.Frame):
 app = wx.App(False)
 frame = Server_GUI(None, "BT_Server")
 
-atexit.register(frame.exit())
+atexit.register(frame.exit)
 app.MainLoop()
