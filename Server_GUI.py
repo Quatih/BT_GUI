@@ -25,12 +25,12 @@ class BTDevice:
         advertise_service( self.server_sock, "BT_GUI", service_classes = [ SERIAL_PORT_CLASS ], profiles = [ SERIAL_PORT_PROFILE ] )
         
         self.client_sock,self.client_address = self.server_sock.accept()
-        print ("Accepted connection from ",client_info)
-        connected = True
+        print ("Accepted connection from ",self.client_address)
+        self.connected = True
         stop_advertising(self.server_sock)
         
     def receive(self):
-        data = client_sock.recv(1024)
+        data = self.client_sock.recv(1024)
         print ("received [%s]" % data)
         return data
 
@@ -41,7 +41,11 @@ class BTDevice:
         if not self.server_sock is None:
             self.server_sock.close()
         if not self.client_sock is None:
+<<<<<<< HEAD
             self.client_sock.close()        
+=======
+            self.client_sock.close()     
+>>>>>>> e8ebea92224bf738a0494260bc5c636926abc454
     
 class Server_GUI(wx.Frame):
     device_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
@@ -115,6 +119,7 @@ class Server_GUI(wx.Frame):
         if not self.matches:
             pass
         else:
+<<<<<<< HEAD
             self.connect(matches[self.lst.GetSelection()])
             sendThread = threading.Thread(target=self.ReceivePackets)
             thread.start()
@@ -122,6 +127,15 @@ class Server_GUI(wx.Frame):
     def ReceivePackets(self):
         threading.Timer(1, ReceivePackets).start()
         for dev in connected_devices:
+=======
+            self.connect(self.matches[self.lst.GetSelection()])
+            sendThread = threading.Thread(target=self.ReceivePackets)
+            sendThread.start()
+
+    def ReceivePackets(self):
+        threading.Timer(1, self.ReceivePackets).start()
+        for dev in self.connected_devices:
+>>>>>>> e8ebea92224bf738a0494260bc5c636926abc454
             data = dev.receive()
             self.text.appendText(data + "\n")
 
@@ -129,7 +143,7 @@ class Server_GUI(wx.Frame):
         device = BTDevice("BT_GUI")
         device.connect()
         if (device.connected):
-            connected_devices.append(device)
+            self.connected_devices.append(device)
 
     def OnExit(self,e):
         self.Close(True)  # Close the frame.
@@ -145,5 +159,5 @@ class Server_GUI(wx.Frame):
 app = wx.App(False)
 frame = Server_GUI(None, "BT_Server")
 
-atexit.register(frame.exit())
+atexit.register(frame.exit)
 app.MainLoop()
