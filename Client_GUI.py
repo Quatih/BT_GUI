@@ -20,7 +20,7 @@ class BTServer:
         self.sock.send("hello!!")
         self.sock.close()
 
-    # returns list of servers with the matching service
+    # returns list of servers Quarkiwith the matching service
     def find(self):
         try: 
             service_matches = find_service( name = self.name, uuid = SERIAL_PORT_CLASS)
@@ -40,7 +40,7 @@ class BTServer:
         return data
 
     def send(self, data):
-        self.client_sock.send(data)
+        self.sock.send(data)
 
     def close(self): 
         self.sock.close()

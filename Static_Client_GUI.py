@@ -5,45 +5,34 @@ import time
 import threading
 import select
 import atexit
-
-#Wrapper for setting up connection, receiving and sending to a BT device
-class BTDevice:
-    server_sock = None
-    client_sock = None
-    client_address = None
-    connected = False
-    def __init__(self, address=None, name=None):
-        self.address = address
+# Class for setting up a connection with a server application
+class BTServer:
+    server_address = "60:02:92:A6:E1:E2"
+    def __init__(self, name=None):
         self.name = name
 
-    def connect(self):
-        self.server_sock=  BluetoothSocket( RFCOMM )
-        self.server_sock.bind(("",1))
-        self.server_sock.listen(1)
-           
-        self.client_sock,self.client_address = self.server_sock.accept()
-        print ("Accepted connection from ",client_info)
-        self.connected = True
-        stop_advertising(self.server_sock)
-        receive()
+    def connect(self, match):
+        self.sock = BluetoothSocket(RFCOMM)
+        self.sock.connect((server_address, 1))
+        send("Hello")
         close()
 
     def receive(self):
-        data = self.client_sock.recv(1024)
+        data = self.sock.recv(1024)
         print ("received [%s]" % data)
         return data
 
     def send(self, data):
-        self.client_sock.send(data)
+        self.sock.send(data)
 
     def close(self): 
-        self.client_sock.close()
-        self.server_sock.close() 
+        self.sock.close()
+        
     
-class Server_GUI(wx.Frame):
+class Client_GUI(wx.Frame):
     device_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
     device_selected = 0
-    connected_devices = []
+    server = None
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(300,150))
         #self.control = wx.TextCtrl(self, style=wx.TE_MULTILINE)
@@ -70,8 +59,11 @@ class Server_GUI(wx.Frame):
         # Setting up the menu.
         filemenu= wx.Menu()
 
-        menuScan = filemenu.Append(wx.ID_ABOUT, "&Advertise","Advertise this server")
-        #menuConnect = filemenu.Append(wx.ID_ANY, "&Connect", "Connect to selected server")
+        # wx.ID_ABOUT and wx.ID_EXIT are standard ids provided by wxWidgets.
+        #menuOpen = filemenu.Append(wx.ID_OPEN, "&Open", "Open a file")
+        #filemenu.AppendSeparator()
+        menuScan = filemenu.Append(wx.ID_ABOUT, "&Scan","Scan for servers")
+        menuConnect = filemenu.Append(wx.ID_ANY, "&Connect", "Connect to selected server")
         menuExit = filemenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")
 
         # Creating the menubar.
@@ -81,7 +73,7 @@ class Server_GUI(wx.Frame):
 
         # Set events.
         self.Bind(wx.EVT_MENU, self.OnScan, menuScan)
-        #self.Bind(wx.EVT_MENU, self.OnConnect, menuConnect)
+        self.Bind(wx.EVT_MENU, self.OnConnect, menuConnect)
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
         #self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
         self.Show(True)
@@ -104,9 +96,23 @@ class Server_GUI(wx.Frame):
         dlg.Destroy()
 
     def OnScan(self,e):
-        print("Advertising")
-        thread = threading.Thread(target=self.BTScan)
+        # A message dialog box with an OK button. wx.OK is a standard ID in wxWidgets.
+        thread = threading.Thread(target=self.BTConn)
         thread.start()
+        #worker = BTDiscover(self, 0, [])
+        #worker.start()
+        #for addr in nearby_devices:
+        #    print("  %s " % (addr))
+        #dlg = wx.MessageDialog( self, "A small text editor", "About Sample Editor", wx.OK)
+        #dlg.ShowModal() # Show it
+        #dlg.Destroy() # finally destroy it when finished.
+
+    def OnConnect(self, e):
+        if (not self.lst.IsEmpty()):
+            thread = threading.Thread(target=self.OpenSocket)
+            thread.start()
+        else:
+            print("No selection")
     
     def OpenSocket(self):
         if not self.matches:
@@ -115,32 +121,32 @@ class Server_GUI(wx.Frame):
             self.connect(matches[self.lst.GetSelection()])
             sendThread = threading.Thread(target=self.SendPacket)
             thread.start()
-
-    def ReceivePackets(self):
+    def SendPacket(self):
         threading.Timer(1, SendPacket).start()
-        for dev in connected_devices:
-            data = dev.receive()
-            self.text.appendText(data + "\n")
+        self.server.send("Test packet!")
 
     def BTScan(self):
-        device = BTDevice("BT_GUI")
-        device.connect()
-        if (device.connected):
-            connected_devices.append(device)
+        self.server = BTServer("BT_GUI")
+        self.matches = self.server.find()
+        # empty list
+        if(not self.matches):
+            wx.CallAfter(self.lst.Set, [])
+        else:
+            names = self.matches["name"]
+            wx.CallAfter(self.lst.Set, names)
+    def BTConn(self)
+        self.server = BTServer("BT_GUI")
 
     def OnExit(self,e):
         self.Close(True)  # Close the frame.
         exit()
-        
+
     def exit(self):
-        if not self.connected_devices:
-            pass
-        else:
-            for item in self.connected_devices:
-                item.close()
+        if not self.server is None:
+            self.server.close()
 
 app = wx.App(False)
-frame = Server_GUI(None, "BT_Server")
+frame = Client_GUI(None, "BT_Client")
 
-atexit.register(frame.exit())
+atexit.register(frame.exit)
 app.MainLoop()
