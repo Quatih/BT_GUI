@@ -8,6 +8,7 @@ import atexit
 # Class for setting up a connection with a server application
 class BTServer:
     server_address = "60:02:92:A6:E1:E2"
+    sock = None
     def __init__(self, name=None):
         self.name = name
 
@@ -26,7 +27,8 @@ class BTServer:
         self.sock.send(data)
 
     def close(self): 
-        self.sock.close()
+        if not self.sock is None:
+            self.sock.close()
         
     
 class Client_GUI(wx.Frame):

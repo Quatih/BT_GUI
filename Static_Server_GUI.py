@@ -18,13 +18,12 @@ class BTDevice:
 
     def connect(self):
         self.server_sock=  BluetoothSocket( RFCOMM )
-        self.server_sock.bind(("",1))
+        self.server_sock.bind(("",3))
         self.server_sock.listen(1)
            
         self.client_sock,self.client_address = self.server_sock.accept()
         print ("Accepted connection from ",self.client_address)
         self.connected = True
-        stop_advertising(self.server_sock)
         self.receive()
         self.close()
 
@@ -37,8 +36,10 @@ class BTDevice:
         self.client_sock.send(data)
 
     def close(self): 
-        self.client_sock.close()
-        self.server_sock.close() 
+        if not self.server_sock is None:
+            self.server_sock.close()
+        if not self.client_sock is None:
+            self.client_sock.close()        
     
 class Server_GUI(wx.Frame):
     device_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
@@ -112,13 +113,13 @@ class Server_GUI(wx.Frame):
         if not self.matches:
             pass
         else:
-            self.connect(matches[self.lst.GetSelection()])
-            sendThread = threading.Thread(target=self.SendPacket)
-            thread.start()
+            self.connect(self.matches[self.lst.GetSelection()])
+            sendThread = threading.Thread(target=self.ReceivePackets)
+            sendThread.start()
 
     def ReceivePackets(self):
-        threading.Timer(1, SendPacket).start()
-        for dev in connected_devices:
+        threading.Timer(1, self.ReceivePackets).start()
+        for dev in self.connected_devices:
             data = dev.receive()
             self.text.appendText(data + "\n")
 
@@ -126,7 +127,7 @@ class Server_GUI(wx.Frame):
         device = BTDevice("BT_GUI")
         device.connect()
         if (device.connected):
-            connected_devices.append(device)
+            self.connected_devices.append(device)
 
     def OnExit(self,e):
         self.Close(True)  # Close the frame.
