@@ -11,11 +11,11 @@ class BTServer:
     def __init__(self, name=None):
         self.name = name
 
-    def connect(self, match):
+    def connect(self):
         self.sock = BluetoothSocket(RFCOMM)
-        self.sock.connect((server_address, 1))
-        send("Hello")
-        close()
+        self.sock.connect((self.server_address, 1))
+        self.send("Hello")
+        self.close()
 
     def receive(self):
         data = self.sock.recv(1024)
@@ -134,8 +134,9 @@ class Client_GUI(wx.Frame):
         else:
             names = self.matches["name"]
             wx.CallAfter(self.lst.Set, names)
-    def BTConn(self)
+    def BTConn(self):
         self.server = BTServer("BT_GUI")
+        self.server.connect()
 
     def OnExit(self,e):
         self.Close(True)  # Close the frame.

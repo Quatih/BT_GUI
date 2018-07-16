@@ -22,11 +22,11 @@ class BTDevice:
         self.server_sock.listen(1)
            
         self.client_sock,self.client_address = self.server_sock.accept()
-        print ("Accepted connection from ",client_info)
+        print ("Accepted connection from ",self.client_address)
         self.connected = True
         stop_advertising(self.server_sock)
-        receive()
-        close()
+        self.receive()
+        self.close()
 
     def receive(self):
         data = self.client_sock.recv(1024)
