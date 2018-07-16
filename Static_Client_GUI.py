@@ -7,16 +7,15 @@ import select
 import atexit
 # Class for setting up a connection with a server application
 class BTServer:
-    server_address = "60:02:92:A6:E1:E2"
+    #server_address = "60:02:92:A6:E1:E2" #Quatsurf
+    server_address = "24:0a:c4:02:01:d6" #ESP32
     sock = None
     def __init__(self, name=None):
         self.name = name
 
     def connect(self):
         self.sock = BluetoothSocket(RFCOMM)
-        self.sock.connect((self.server_address, 1))
-        self.send("Hello")
-        self.close()
+        self.sock.connect((self.server_address, 3))
 
     def receive(self):
         data = self.sock.recv(1024)
@@ -122,9 +121,9 @@ class Client_GUI(wx.Frame):
         else:
             self.connect(matches[self.lst.GetSelection()])
             sendThread = threading.Thread(target=self.SendPacket)
-            thread.start()
+            sendThread.start()
     def SendPacket(self):
-        threading.Timer(1, SendPacket).start()
+        threading.Timer(2, self.SendPacket).start()
         self.server.send("Test packet!")
 
     def BTScan(self):
@@ -139,6 +138,8 @@ class Client_GUI(wx.Frame):
     def BTConn(self):
         self.server = BTServer("BT_GUI")
         self.server.connect()
+        thread = threading.Thread(target=self.SendPacket)
+        thread.start()
 
     def OnExit(self,e):
         self.Close(True)  # Close the frame.
