@@ -14,9 +14,9 @@ class BTServer:
         self.port = match["port"]
         self.name = match["name"]
         self.host = match["host"]
-        print ("connecting to ", host)
+        print ("connecting to ", self.host)
         self.sock=BluetoothSocket( RFCOMM )
-        self.sock.connect((host, port))
+        self.sock.connect((self.host, self.port))
         self.sock.send("hello!!")
         self.sock.close()
 
@@ -25,13 +25,10 @@ class BTServer:
         try: 
             service_matches = find_service( name = self.name, uuid = SERIAL_PORT_CLASS)
             if len(service_matches) == 0:
-<<<<<<< HEAD
                 print ("couldn’t find the service", self.name)
-=======
-                print ("couldn’t find the service ", self.name)
->>>>>>> ddabfaef047a82ee47e6f3931b4d3739f6eca07a
                 return [] 
             else:
+                print ("Found service!")
                 return service_matches[0]
         except:
             print("No service found.")
@@ -47,7 +44,8 @@ class BTServer:
         self.sock.send(data)
 
     def close(self): 
-        self.sock.close()
+        if not self.sock is None:
+            self.sock.close()
         
     
 class Client_GUI(wx.Frame):
