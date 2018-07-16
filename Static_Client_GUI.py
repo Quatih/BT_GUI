@@ -7,36 +7,15 @@ import select
 import atexit
 # Class for setting up a connection with a server application
 class BTServer:
+    server_address = "60:02:92:A6:E1:E2"
     def __init__(self, name=None):
         self.name = name
 
     def connect(self, match):
-        self.port = match["port"]
-        self.name = match["name"]
-        self.host = match["host"]
-        print ("connecting to ", host)
-        self.sock=BluetoothSocket( RFCOMM )
-        self.sock.connect((host, port))
-        self.sock.send("hello!!")
-        self.sock.close()
-
-    # returns list of servers Quarkiwith the matching service
-    def find(self):
-        try: 
-            service_matches = find_service( name = self.name, uuid = SERIAL_PORT_CLASS)
-            if len(service_matches) == 0:
-<<<<<<< HEAD
-                print ("couldn’t find the service", self.name)
-=======
-                print ("couldn’t find the service ", self.name)
->>>>>>> ddabfaef047a82ee47e6f3931b4d3739f6eca07a
-                return [] 
-            else:
-                return service_matches[0]
-        except:
-            print("No service found.")
-            return []
-
+        self.sock = BluetoothSocket(RFCOMM)
+        self.sock.connect((server_address, 1))
+        send("Hello")
+        close()
 
     def receive(self):
         data = self.sock.recv(1024)
@@ -118,7 +97,7 @@ class Client_GUI(wx.Frame):
 
     def OnScan(self,e):
         # A message dialog box with an OK button. wx.OK is a standard ID in wxWidgets.
-        thread = threading.Thread(target=self.BTScan)
+        thread = threading.Thread(target=self.BTConn)
         thread.start()
         #worker = BTDiscover(self, 0, [])
         #worker.start()
@@ -155,6 +134,8 @@ class Client_GUI(wx.Frame):
         else:
             names = self.matches["name"]
             wx.CallAfter(self.lst.Set, names)
+    def BTConn(self)
+        self.server = BTServer("BT_GUI")
 
     def OnExit(self,e):
         self.Close(True)  # Close the frame.

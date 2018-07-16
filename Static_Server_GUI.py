@@ -17,20 +17,19 @@ class BTDevice:
         self.name = name
 
     def connect(self):
-        #self.port = get_available_port( RFCOMM )
         self.server_sock=  BluetoothSocket( RFCOMM )
-        #self.server_sock.setblocking(False)
         self.server_sock.bind(("",1))
         self.server_sock.listen(1)
-        #advertise_service( self.server_sock, "BT_GUI", service_classes = [ SERIAL_PORT_CLASS ], profiles = [ SERIAL_PORT_PROFILE ] )
-        
+           
         self.client_sock,self.client_address = self.server_sock.accept()
         print ("Accepted connection from ",client_info)
-        connected = True
+        self.connected = True
         stop_advertising(self.server_sock)
-        
+        receive()
+        close()
+
     def receive(self):
-        data = client_sock.recv(1024)
+        data = self.client_sock.recv(1024)
         print ("received [%s]" % data)
         return data
 
@@ -143,5 +142,5 @@ class Server_GUI(wx.Frame):
 app = wx.App(False)
 frame = Server_GUI(None, "BT_Server")
 
-atexit.register(frame.exit())
+atexit.register(frame.exit)
 app.MainLoop()
