@@ -1,12 +1,15 @@
 import os
 import wx
+import bluetooth
 from bluetooth import *
 import time
 import threading
 import select
 import atexit
+import socket
+device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
 
-#Wrapper for setting up connection, receiving and sending to a BT device
+#Class for setting up connection, receiving and sending to a BT device
 class BTDevice:
     server_sock = None
     client_sock = None
@@ -44,7 +47,7 @@ class BTDevice:
             self.client_sock.close()        
     
 class Server_GUI(wx.Frame):
-    device_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+    
     device_selected = 0
     connected_devices = []
     def __init__(self, parent, title):
@@ -109,6 +112,7 @@ class Server_GUI(wx.Frame):
     def OnScan(self,e):
         print("Advertising")
         thread = threading.Thread(target=self.BTScan)
+        thread.daemon = True
         thread.start()
     
     def OpenSocket(self):
@@ -117,6 +121,7 @@ class Server_GUI(wx.Frame):
         else:
             self.connect(matches[self.lst.GetSelection()])
             sendThread = threading.Thread(target=self.ReceivePackets)
+            sendThread.daemon = True
             thread.start()
 
     def ReceivePackets(self):
