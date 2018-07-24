@@ -5,6 +5,8 @@ import time
 import threading
 import select
 import atexit
+
+device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
 # Class for setting up a connection with a server application
 class BTServer:
     sock = None
@@ -50,7 +52,7 @@ class BTServer:
         
     
 class Client_GUI(wx.Frame):
-    device_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+    
     device_selected = 0
     server = None
     def __init__(self, parent, title):
@@ -118,6 +120,7 @@ class Client_GUI(wx.Frame):
     def OnScan(self,e):
         # A message dialog box with an OK button. wx.OK is a standard ID in wxWidgets.
         thread = threading.Thread(target=self.BTScan)
+        thread.daemon = True
         thread.start()
         #worker = BTDiscover(self, 0, [])
         #worker.start()
@@ -130,6 +133,7 @@ class Client_GUI(wx.Frame):
     def OnConnect(self, e):
         if (not self.lst.IsEmpty()):
             thread = threading.Thread(target=self.OpenSocket)
+            thread.daemon = True
             thread.start()
         else:
             print("No selection")
@@ -140,9 +144,10 @@ class Client_GUI(wx.Frame):
         else:
             self.connect(matches[self.lst.GetSelection()])
             sendThread = threading.Thread(target=self.SendPacket)
+            sendThread.daemon = True
             thread.start()
     def SendPacket(self):
-        threading.Timer(1, SendPacket).start()
+        threading.Timer(1, self.SendPacket).start()
         self.server.send("Test packet!")
 
     def BTScan(self):
