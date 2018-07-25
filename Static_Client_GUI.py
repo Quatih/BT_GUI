@@ -31,7 +31,7 @@ class BTServer:
         
     
 class Client_GUI(wx.Frame):
-    device_uuid = "94f39d29-7d6d-437d-973b-fba39e49d4ee"
+    
     device_selected = 0
     server = None
     def __init__(self, parent, title):
