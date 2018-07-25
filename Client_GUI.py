@@ -72,20 +72,23 @@ class BTServer:
         self.host = match["host"]
         print ("connecting to ", self.host)
         self.sock=BluetoothSocket( RFCOMM )
-        self.sock.connect((self.host, self.port))
+        # for L2CAP 
+        # self.sock.connect(self.host, self.port)
+        # for RFCOMM
+        self.sock.connect(self.port)
         self.connected = True
     # returns list of servers with the matching service
     def find(self):
         try: 
             #service_matches = find_service( uuid = "1101")
-            service_matches = find_service()
+            service_matches = find_service(uuid = "1101")
             if len(service_matches) == 0:
                 print ("couldn’t find the service", self.name)
                 return [] 
             else:
                 print ("Found service!")
                 for items in service_matches:
-                    print("%s", % items)
+                    print("%s" % items)
                 return service_matches
         except:
             print("No service found.")
@@ -120,7 +123,7 @@ class Client_GUI(wx.Frame):
         self.text = wx.TextCtrl(panel,style = wx.TE_MULTILINE) 
             
         self.device_names = []   
-        self.lst = wx.ListBox(panel, size = (100,-1), choices = self.device_names, style = wx.LB_SINGLE)
+        self.lst = wx.ListBox(panel, size = (200,-1), choices = self.device_names, style = wx.LB_SINGLE)
             
         box.Add(self.lst,0,wx.EXPAND) 
         box.Add(self.text, 1, wx.EXPAND) 
@@ -235,18 +238,24 @@ class Client_GUI(wx.Frame):
 
     def BTScan(self):
         print("Scanning for servers")
-        self.server = BTServer()
+        self.server = BTServer("BT_Sense")
         self.matches = self.server.find()
         # empty list
         if(not self.matches):
             wx.CallAfter(self.lst.Clear)
         else:
             wx.CallAfter(self.lst.Clear)
+            names = []
             for service in self.matches:
-                names = service["name"]
-                name = names.decode("utf-8")
-                print(name)
-                wx.CallAfter(self.lst.AppendItems, name)
+                name = service["name"]
+                if not names is None:
+                    name = name.decode("utf-8")
+                else:
+                    name = "N/A"
+                name += ", host: "
+                name += service["host"]
+                names.append(name)
+            wx.CallAfter(self.lst.AppendItems, names)
 
     def OnExit(self,e):
         self.Close(True)  # Close the frame.
