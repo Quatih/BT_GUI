@@ -75,7 +75,7 @@ class BTServer:
         # for L2CAP 
         # self.sock.connect(self.host, self.port)
         # for RFCOMM
-        self.sock.connect(self.port)
+        self.sock.connect((self.host, self.port))
         self.connected = True
     # returns list of servers with the matching service
     def find(self, _uuid = None):
@@ -239,7 +239,7 @@ class Client_GUI(wx.Frame):
     def BTScan(self):
         print("Scanning for servers")
         self.server = BTServer("BT_Sense")
-        self.matches = self.server.find()
+        self.matches = self.server.find(_uuid = "1101")
         # empty list
         if(not self.matches):
             wx.CallAfter(self.lst.Clear)
@@ -248,7 +248,7 @@ class Client_GUI(wx.Frame):
             names = []
             for service in self.matches:
                 name = service["name"]
-                if not names is None:
+                if not name is None:
                     name = name.decode("utf-8")
                 else:
                     name = "N/A"
