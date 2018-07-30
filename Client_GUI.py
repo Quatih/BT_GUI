@@ -78,12 +78,11 @@ class BTServer:
         self.sock.connect(self.port)
         self.connected = True
     # returns list of servers with the matching service
-    def find(self):
-        try: 
-            #service_matches = find_service( uuid = "1101")
-            service_matches = find_service(uuid = "1101")
+    def find(self, _uuid = None):
+        try:
+            service_matches = find_service(uuid = _uuid)
             if len(service_matches) == 0:
-                print ("couldn’t find the service", self.name)
+                print ("couldn't find the service", self.name)
                 return [] 
             else:
                 print ("Found service!")
@@ -117,6 +116,7 @@ class Client_GUI(wx.Frame):
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(300,150))
         #self.control = wx.TextCtrl(self, style=wx.TE_MULTILINE)
+        mainSizer = wx.BoxSizer(wx.VERTICAL)
         panel = wx.Panel(self) 
         box = wx.BoxSizer(wx.HORIZONTAL) 
             
@@ -125,7 +125,7 @@ class Client_GUI(wx.Frame):
         self.device_names = []   
         self.lst = wx.ListBox(panel, size = (200,-1), choices = self.device_names, style = wx.LB_SINGLE)
             
-        box.Add(self.lst,0,wx.EXPAND) 
+        box.Add(self.lst, 0, wx.EXPAND) 
         box.Add(self.text, 1, wx.EXPAND) 
             
         panel.SetSizer(box) 
