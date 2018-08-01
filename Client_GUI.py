@@ -5,7 +5,7 @@ import time
 import threading
 import select
 import atexit
-
+import bluetooth._msbt as bt
 # custom thread with timer functions and a callback
 class TimerThread(threading.Thread):
     def __init__(self, timeout=3, sleep_chunk=0.25, callback=None, *args):
@@ -75,7 +75,7 @@ class BTServer:
         # for L2CAP 
         # self.sock.connect(self.host, self.port)
         # for RFCOMM
-        self.sock.connect(self.port)
+        self.sock.connect((self.host, self.port))
         self.connected = True
     # returns list of servers with the matching service
     def find(self, _uuid = None):
@@ -91,8 +91,7 @@ class BTServer:
                 return service_matches
         except:
             print("No service found.")
-            return []
-
+            return []        
 
     def receive(self):
         data = self.sock.recv(1024)
@@ -239,7 +238,7 @@ class Client_GUI(wx.Frame):
     def BTScan(self):
         print("Scanning for servers")
         self.server = BTServer("BT_Sense")
-        self.matches = self.server.find()
+        self.matches = self.server.find(_uuid = self.server.device_uuid) 
         # empty list
         if(not self.matches):
             wx.CallAfter(self.lst.Clear)
@@ -248,12 +247,16 @@ class Client_GUI(wx.Frame):
             names = []
             for service in self.matches:
                 name = service["name"]
-                if not names is None:
+                if not name is None:
                     name = name.decode("utf-8")
                 else:
                     name = "N/A"
+                host = service["host"]
+                if host is None:
+                    host = "N/A"
+                
                 name += ", host: "
-                name += service["host"]
+                name += host
                 names.append(name)
             wx.CallAfter(self.lst.AppendItems, names)
 
