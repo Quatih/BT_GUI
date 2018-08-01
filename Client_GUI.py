@@ -6,12 +6,65 @@ import threading
 import select
 import atexit
 
-device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
+# custom thread with timer functions and a callback
+class TimerThread(threading.Thread):
+    def __init__(self, timeout=3, sleep_chunk=0.25, callback=None, *args):
+        threading.Thread.__init__(self)
+
+        self.timeout = timeout
+        self.sleep_chunk = sleep_chunk
+        if callback == None:
+            self.callback = None
+        else:
+            self.callback = callback
+        self.callback_args = args
+
+        self.terminate_event = threading.Event()
+        self.start_event = threading.Event()
+        self.reset_event = threading.Event()
+        self.count = self.timeout/self.sleep_chunk
+
+    def run(self):
+        while not self.terminate_event.is_set():
+            while self.count > 0 and self.start_event.is_set():
+                # print self.count
+                # time.sleep(self.sleep_chunk)
+                # if self.reset_event.is_set():
+                if self.reset_event.wait(self.sleep_chunk):  # wait for a small chunk of timeout
+                    self.reset_event.clear()
+                    self.count = self.timeout/self.sleep_chunk  # reset
+                self.count -= 1
+            if self.count <= 0:
+                self.start_event.set()
+                #print 'timeout. calling function...'
+                self.callback(*self.callback_args)
+                self.count = self.timeout/self.sleep_chunk  #reset
+
+    def start_timer(self):
+        self.start_event.set()
+
+    def stop_timer(self):
+        self.start_event.clear()
+        self.count = self.timeout / self.sleep_chunk  # reset
+
+    def restart_timer(self):
+        # reset only if timer is running. otherwise start timer afresh
+        if self.start_event.is_set():
+            self.reset_event.set()
+        else:
+            self.start_event.set()
+
+    def terminate(self):
+        self.terminate_event.set()
+
 # Class for setting up a connection with a server application
 class BTServer:
+    device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
     sock = None
-    def __init__(self, name=None):
+    connected = False
+    def __init__(self, port=None, name=None):
         self.name = name
+        self.port = port
 
     def connect(self, match):
         self.port = match["port"]
@@ -19,20 +72,23 @@ class BTServer:
         self.host = match["host"]
         print ("connecting to ", self.host)
         self.sock=BluetoothSocket( RFCOMM )
+        # for L2CAP 
+        # self.sock.connect(self.host, self.port)
+        # for RFCOMM
         self.sock.connect((self.host, self.port))
-        self.sock.send("hello!!")
-        self.sock.close()
-
-    # returns list of servers Quarkiwith the matching service
-    def find(self):
-        try: 
-            service_matches = find_service( name = self.name, uuid = SERIAL_PORT_CLASS)
+        self.connected = True
+    # returns list of servers with the matching service
+    def find(self, _uuid = None):
+        try:
+            service_matches = find_service(uuid = _uuid)
             if len(service_matches) == 0:
-                print ("couldn’t find the service", self.name)
+                print ("couldn't find the service", self.name)
                 return [] 
             else:
                 print ("Found service!")
-                return service_matches[0]
+                for items in service_matches:
+                    print("%s" % items)
+                return service_matches
         except:
             print("No service found.")
             return []
@@ -49,24 +105,27 @@ class BTServer:
     def close(self): 
         if not self.sock is None:
             self.sock.close()
+            self.connected = False
         
     
 class Client_GUI(wx.Frame):
     
     device_selected = 0
     server = None
+    matches = None
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(300,150))
         #self.control = wx.TextCtrl(self, style=wx.TE_MULTILINE)
+        mainSizer = wx.BoxSizer(wx.VERTICAL)
         panel = wx.Panel(self) 
         box = wx.BoxSizer(wx.HORIZONTAL) 
             
         self.text = wx.TextCtrl(panel,style = wx.TE_MULTILINE) 
             
         self.device_names = []   
-        self.lst = wx.ListBox(panel, size = (100,-1), choices = self.device_names, style = wx.LB_SINGLE)
+        self.lst = wx.ListBox(panel, size = (200,-1), choices = self.device_names, style = wx.LB_SINGLE)
             
-        box.Add(self.lst,0,wx.EXPAND) 
+        box.Add(self.lst, 0, wx.EXPAND) 
         box.Add(self.text, 1, wx.EXPAND) 
             
         panel.SetSizer(box) 
@@ -86,6 +145,7 @@ class Client_GUI(wx.Frame):
         #filemenu.AppendSeparator()
         menuScan = filemenu.Append(wx.ID_ABOUT, "&Scan","Scan for servers")
         menuConnect = filemenu.Append(wx.ID_ANY, "&Connect", "Connect to selected server")
+        menuDisconnect = filemenu.Append(wx.ID_ANY, "&Disconnect", "Disconnect from connected server")
         menuExit = filemenu.Append(wx.ID_EXIT,"E&xit"," Terminate the program")
 
         # Creating the menubar.
@@ -96,6 +156,8 @@ class Client_GUI(wx.Frame):
         # Set events.
         self.Bind(wx.EVT_MENU, self.OnScan, menuScan)
         self.Bind(wx.EVT_MENU, self.OnConnect, menuConnect)
+        self.Bind(wx.EVT_MENU, self.OnDisconnect, menuDisconnect)
+        
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
         #self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
         self.Show(True)
@@ -131,34 +193,69 @@ class Client_GUI(wx.Frame):
         #dlg.Destroy() # finally destroy it when finished.
 
     def OnConnect(self, e):
-        if (not self.lst.IsEmpty()):
+        if self.server.connected:
+            print("Already connected")
+        elif (not self.lst.IsEmpty()):
             thread = threading.Thread(target=self.OpenSocket)
             thread.daemon = True
             thread.start()
         else:
             print("No selection")
-    
+    def OnDisconnect(self, e):
+        if not self.server is None:
+            if self.server.connected:
+                self.sendThread.stop_timer()
+                self.recThread.stop_timer()
+                self.exit()
+                print("Closed connection to %s" %self.server.name)
+            else:
+                print("No server connected")
+        else:
+            print("No server connected")
     def OpenSocket(self):
         if not self.matches:
             pass
         else:
-            self.connect(matches[self.lst.GetSelection()])
-            sendThread = threading.Thread(target=self.SendPacket)
-            sendThread.daemon = True
-            thread.start()
+            self.server.connect(self.matches[self.lst.GetSelection()])
+            #self.sendThread = threading.Thread(target=self.SendPacket)
+            self.sendThread = TimerThread(1, 0.25, self.SendPacket)
+            self.sendThread.daemon = True
+            self.sendThread.start()
+            self.sendThread.start_timer()
+            self.recThread = TimerThread(1, 0.25, self.ReceivePacket)
+            #self.recThread = threading.Thread(target=self.ReceivePacket)
+            self.recThread.daemon = True
+            self.recThread.start()
+            self.recThread.start_timer()
+
     def SendPacket(self):
-        threading.Timer(1, self.SendPacket).start()
+        #threading.Timer(1, self.SendPacket).start()
         self.server.send("Test packet!")
 
+    def ReceivePacket(self):
+        #threading.Timer(1, self.ReceivePacket).start()
+        rec = self.server.receive()
+
     def BTScan(self):
-        self.server = BTServer("BT_GUI")
-        self.matches = self.server.find()
+        print("Scanning for servers")
+        self.server = BTServer("BT_Sense")
+        self.matches = self.server.find(_uuid = "1101")
         # empty list
         if(not self.matches):
-            wx.CallAfter(self.lst.Set, [])
+            wx.CallAfter(self.lst.Clear)
         else:
-            names = self.matches["name"]
-            wx.CallAfter(self.lst.Set, names)
+            wx.CallAfter(self.lst.Clear)
+            names = []
+            for service in self.matches:
+                name = service["name"]
+                if not name is None:
+                    name = name.decode("utf-8")
+                else:
+                    name = "N/A"
+                name += ", host: "
+                name += service["host"]
+                names.append(name)
+            wx.CallAfter(self.lst.AppendItems, names)
 
     def OnExit(self,e):
         self.Close(True)  # Close the frame.

@@ -7,10 +7,10 @@ import threading
 import select
 import atexit
 import socket
-device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
 
 #Class for setting up connection, receiving and sending to a BT device
 class BTDevice:
+    device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
     server_sock = None
     client_sock = None
     client_address = None
