@@ -59,7 +59,10 @@
 
 static int RFCOMM_SERVER_CHANNEL;
 #define HEARTBEAT_PERIOD_MS 1000
-static uint8_t SERVICE_UUID [] = {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99, 0x82, 0xec, 0x28, 0x68, 0x26, 0x2b, 0xd4, 0xe4};
+static uint8_t SERVICE_UUID [] = {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99, 
+                                  0x82, 0xec, 0x28, 0x68, 0x26, 0x2b, 0xd4, 0xe4};
+                                 //{0x00, 0x00, 0x11, 0x01, 0x00, 0x00, 0x10, 0x00,
+                                 // 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB};
 static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
 
 static uint16_t rfcomm_channel_id;
@@ -92,7 +95,14 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
     
 	// 0x0001 "Service Class ID List"
 	de_add_number(service,  DE_UINT, DE_SIZE_16, BLUETOOTH_ATTRIBUTE_SERVICE_CLASS_ID_LIST);
-    de_add_uuid128(service, SERVICE_UUID );
+    
+    attribute = de_push_sequence(service);
+    {
+        de_add_uuid128(attribute, &SERVICE_UUID[0]);
+        //de_add_number(attribute,  DE_UUID, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_SERIAL_PORT );
+    }
+    de_pop_sequence(service, attribute);
+    // de_add_uuid128(service, SERVICE_UUID );
 	
 	// 0x0004 "Protocol Descriptor List"
 	de_add_number(service,  DE_UINT, DE_SIZE_16, BLUETOOTH_ATTRIBUTE_PROTOCOL_DESCRIPTOR_LIST);
@@ -131,19 +141,19 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
 	}
 	de_pop_sequence(service, attribute);
 	
-	// 0x0009 "Bluetooth Profile Descriptor List"
-	de_add_number(service,  DE_UINT, DE_SIZE_16, BLUETOOTH_ATTRIBUTE_BLUETOOTH_PROFILE_DESCRIPTOR_LIST);
-	attribute = de_push_sequence(service);
-	{
-		uint8_t *Profile = de_push_sequence(attribute);
-		{
-            //de_add_uuid128(Profile, SERVICE_UUID );
-			de_add_number(Profile,  DE_UUID, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_SERIAL_PORT);
-			de_add_number(Profile,  DE_UINT, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_LAN_ACCESS_USING_PPP);
-		}
-		de_pop_sequence(attribute, Profile);
-	}
-	de_pop_sequence(service, attribute);
+	// // 0x0009 "Bluetooth Profile Descriptor List"
+	// de_add_number(service,  DE_UINT, DE_SIZE_16, BLUETOOTH_ATTRIBUTE_BLUETOOTH_PROFILE_DESCRIPTOR_LIST);
+	// attribute = de_push_sequence(service);
+	// {
+	// 	uint8_t *Profile = de_push_sequence(attribute);
+	// 	{
+    //         //de_add_uuid128(Profile, SERVICE_UUID );
+	// 		de_add_number(Profile,  DE_UUID, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_SERIAL_PORT);
+	// 		de_add_number(Profile,  DE_UINT, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_LAN_ACCESS_USING_PPP);
+	// 	}
+	// 	de_pop_sequence(attribute, Profile);
+	// }
+	// de_pop_sequence(service, attribute);
 	
 	// 0x0100 "ServiceName"
 	de_add_number(service,  DE_UINT, DE_SIZE_16, 0x0100);
@@ -166,6 +176,9 @@ static void service_setup(void){
     sdp_init();
     memset(spp_service_buffer, 0, sizeof(spp_service_buffer));
     create_custom_sdp_record(spp_service_buffer, 0x10001, RFCOMM_SERVER_CHANNEL, "BT_Sense");
+   // printf("Before dump: %u\n\r", de_get_len((uint8_t*)spp_service_buffer));
+    //de_dump_data_element((uint8_t*)spp_service_buffer);
+    //printf("After dump: %u\n\r", de_get_len((uint8_t*)spp_service_buffer));
 
     sdp_register_service(spp_service_buffer);
     //sdp_client_query_rfcomm_register_callback(handle_query_rfcomm_event , NULL);
