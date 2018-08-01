@@ -5,7 +5,6 @@ import time
 import threading
 import select
 import atexit
-import bluetooth._msbt as bt
 # custom thread with timer functions and a callback
 class TimerThread(threading.Thread):
     def __init__(self, timeout=3, sleep_chunk=0.25, callback=None, *args):
