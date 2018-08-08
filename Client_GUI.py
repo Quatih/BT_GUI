@@ -36,7 +36,10 @@ class TimerThread(threading.Thread):
             if self.count <= 0:
                 self.start_event.set()
                 #print 'timeout. calling function...'
-                self.callback(*self.callback_args)
+                try:
+                    self.callback(*self.callback_args)
+                except:
+                    print("Connection closed before receive")
                 self.count = self.timeout/self.sleep_chunk  #reset
 
     def start_timer(self):
@@ -58,13 +61,11 @@ class TimerThread(threading.Thread):
 
 # Class for setting up a connection with a server application
 class BTServer:
-    device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
+    
     sock = None
     connected = False
-    def __init__(self, port=None, name=None):
-        self.name = name
-        self.port = port
-
+    def __init__(self):
+        pass
     def connect(self, match):
         self.port = match["port"]
         self.name = match["name"]
@@ -77,7 +78,7 @@ class BTServer:
         self.sock.connect((self.host, self.port))
         self.connected = True
     # returns list of servers with the matching service
-    def find(self, _uuid = None):
+    def find(self, _name = None, _uuid = None):
         try:
             service_matches = find_service(uuid = _uuid)
             if len(service_matches) == 0:
@@ -107,7 +108,7 @@ class BTServer:
         
     
 class Client_GUI(wx.Frame):
-    
+    device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
     device_selected = 0
     server = None
     matches = None
@@ -204,8 +205,9 @@ class Client_GUI(wx.Frame):
             if self.server.connected:
                 self.sendThread.stop_timer()
                 self.recThread.stop_timer()
-                self.exit()
+                
                 print("Closed connection to %s" %self.server.name)
+                self.exit()
             else:
                 print("No server connected")
         else:
@@ -220,7 +222,7 @@ class Client_GUI(wx.Frame):
             self.sendThread.daemon = True
             self.sendThread.start()
             self.sendThread.start_timer()
-            self.recThread = TimerThread(1, 0.25, self.ReceivePacket)
+            self.recThread = TimerThread(0.1, 0.025, self.ReceivePacket)
             #self.recThread = threading.Thread(target=self.ReceivePacket)
             self.recThread.daemon = True
             self.recThread.start()
@@ -236,8 +238,8 @@ class Client_GUI(wx.Frame):
 
     def BTScan(self):
         print("Scanning for servers")
-        self.server = BTServer("BT_Sense")
-        self.matches = self.server.find(_uuid = self.server.device_uuid) 
+        self.server = BTServer()
+        self.matches = self.server.find(_name = "BT_Sense", _uuid = self.device_uuid) 
         # empty list
         if(not self.matches):
             wx.CallAfter(self.lst.Clear)
