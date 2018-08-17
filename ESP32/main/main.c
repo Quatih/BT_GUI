@@ -29,14 +29,14 @@
 static spi_device_handle_t spi;
 #include "spi.h"
 
-#include "queue.h"
-
+//#include "queue.h"
+#include "static_queue.h"
 #define BLINK_GPIO 5 //esp32 thing gpio_led
 
 #define TRANSMISSION_PERIOD_MS 500
-Queue * ADCqueue;
+Static_Queue * ADCqueue;
 size_t bufferIndex = 0;
-
+static uint64_t dacount = 0;
 void blink_task(void *pvParameter)
 {
     /* Configure the IOMUX register for pad BLINK_GPIO (some pads are
@@ -62,8 +62,16 @@ void blink_task(void *pvParameter)
 		//printf("blink_task is running\n");
 		//printf("adc reading: %d\n", adc_read());
         //sprintf(valbuffer, "%d\n;", adc_read());
-        enqueue(ADCqueue, adc_read());
-        //dequeue(ADCqueue);
+        dacount += 1;
+        enqueue(ADCqueue, dacount);
+        if (dacount == 100)
+            dacount = 0;
+        // if(ADCqueue->size == MAX_SIZE-1){
+        //     while(!queueIsEmpty(ADCqueue)) {
+        //         printf("%u, ", dequeue(ADCqueue));
+        //     }
+        //     printf("\nIndex: %d\n", ADCqueue->size);
+        // }
 		data[1]++;
 		if(data[1] == 0x8F)
 			data[1] = 0;
@@ -83,12 +91,14 @@ static void bt_transmission_handler(struct btstack_timer_source *ts){
     static int counter = 0;
 
     if (rfcomm_channel_id){
-        sprintf(lineBuffer, "Counter %04u, values:", ++counter);
+        int length = sprintf(lineBuffer, "%04u:", ++counter);
+        //for (int i = 0; i< ADCqueue->size; i++){
+        ///    printf("%d, ", ADCqueue->queue[i]);
+        //}
         while (!queueIsEmpty(ADCqueue)) {
-            sprintf(lineBuffer, "%d;", dequeue(ADCqueue));
+            length += sprintf(lineBuffer + length, "%d;", dequeue(ADCqueue));
         }
-        sprintf(lineBuffer, "\n");
-        printf("%s", lineBuffer);
+        printf("%s\n", lineBuffer);
 
         rfcomm_request_can_send_now_event(rfcomm_channel_id);
     }
@@ -110,8 +120,7 @@ int btstack_main(int argc, const char * argv[]){
     (void)argc;
     (void)argv;
     int rfcomm_channel = rand() % 30 + 1; // select a channel from 1 to 30
-    ADCqueue = queueCreate(20);
-    
+    ADCqueue = queueCreate();
     printf("Channel set to %d\n", rfcomm_channel);
     one_shot_timer_setup();
     service_setup(rfcomm_channel);

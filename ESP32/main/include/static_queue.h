@@ -6,7 +6,7 @@
 //#define malloc(params) pvPortMalloc
 
 #define QueueType int
-#define MAX_SIZE 20
+#define MAX_SIZE 10
 typedef struct {
     QueueType queue[MAX_SIZE];
     size_t size;
@@ -38,26 +38,29 @@ void queueOverWrite(Static_Queue* q, QueueType data){
 }
 
 QueueType dequeue(Static_Queue* q){
+    if(queueIsEmpty(q)){
+        return (QueueType)0;
+    }
     QueueType ret = q->queue[0];
-    for (size_t i = q->size-1; i > 0 ; i--){
-        q->queue[i-1] = q->queue[i];
+    for (size_t i = 0; i < q->size ; i++){
+        q->queue[i] = q->queue[i+1];
     }
     q->size--;
+    //printf("deq: %d\n", ret);
     return ret;
 }
 
 bool enqueue(Static_Queue* q, QueueType data){
-    if( q->size < (MAX_SIZE - 1)){
+    if( q->size < MAX_SIZE){
         q->queue[q->size] = data;
         q->size++;
     }
     else{
         //printf("overload\n");
-        for (size_t i = q->size-1; i > 0 ; i--){
-            q->queue[i-1] = q->queue[i];
-        }
-        q->queue[MAX_SIZE-1] = data;
+        dequeue(q);
+        q->size = MAX_SIZE;
     }
+    //printf("Value %d added at %d\n", data, q->size-1);
     return true;
 }
 
