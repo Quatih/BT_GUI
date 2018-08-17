@@ -339,6 +339,7 @@ int btstack_main(int argc, const char * argv[]){
     (void)argc;
     (void)argv;
     RFCOMM_SERVER_CHANNEL = rand() % 30 + 1; // select a channel from 1 to 30
+    printf("Channel set to %d\n", RFCOMM_SERVER_CHANNEL);
     one_shot_timer_setup();
     service_setup();
 
