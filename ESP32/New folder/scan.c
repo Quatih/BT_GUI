@@ -33,7 +33,6 @@
 #include "esp_event_loop.h"
 #include "nvs_flash.h"
 
-
 #include "soc/gpio_struct.h"
 #include "driver/spi_master.h"
 

@@ -1,7 +1,10 @@
-///#include <string.h> //needed for memset
-//#include "soc/gpio_struct.h"
-//#include "driver/spi_master.h"
+#ifndef _SPI_H
+#define _SPI_H
 
+#include <string.h> //needed for memset
+#include "soc/gpio_struct.h"
+#include "driver/spi_master.h"
+#include <stdint.h>
 #define PIN_NUM_MISO 17
 #define PIN_NUM_MOSI 19
 #define PIN_NUM_CLK  18
@@ -56,3 +59,5 @@ void spi_init() {
     ret=spi_device_transmit(spi, &t);  //Transmit!
     assert(ret==ESP_OK);            //Should have had no issues.
 }
+
+#endif
