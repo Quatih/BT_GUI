@@ -29,14 +29,14 @@
 static spi_device_handle_t spi;
 #include "spi.h"
 
-//#include "queue.h"
-#include "static_queue.h"
+#include "queue.h"
+
 #define BLINK_GPIO 5 //esp32 thing gpio_led
 
 #define TRANSMISSION_PERIOD_MS 500
-Static_Queue * ADCqueue;
+Queue * ADCqueue;
 size_t bufferIndex = 0;
-static uint64_t dacount = 0;
+
 void blink_task(void *pvParameter)
 {
     /* Configure the IOMUX register for pad BLINK_GPIO (some pads are
@@ -62,14 +62,8 @@ void blink_task(void *pvParameter)
 		//printf("blink_task is running\n");
 		//printf("adc reading: %d\n", adc_read());
         //sprintf(valbuffer, "%d\n;", adc_read());
-        dacount += 2;
-        enqueue(ADCqueue, dacount);
-        if(ADCqueue->size == MAX_SIZE-1){
-            while(!queueIsEmpty(ADCqueue)) {
-                printf("%u, ", dequeue(ADCqueue));
-            }
-            printf("\nIndex: %d\n", ADCqueue->size);
-        }
+        enqueue(ADCqueue, adc_read());
+        //dequeue(ADCqueue);
 		data[1]++;
 		if(data[1] == 0x8F)
 			data[1] = 0;
@@ -116,8 +110,8 @@ int btstack_main(int argc, const char * argv[]){
     (void)argc;
     (void)argv;
     int rfcomm_channel = rand() % 30 + 1; // select a channel from 1 to 30
-    ADCqueue = queueCreate();
-    queueClear(ADCqueue);
+    ADCqueue = queueCreate(20);
+    
     printf("Channel set to %d\n", rfcomm_channel);
     one_shot_timer_setup();
     service_setup(rfcomm_channel);
