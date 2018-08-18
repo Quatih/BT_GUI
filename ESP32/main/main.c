@@ -33,10 +33,11 @@ static spi_device_handle_t spi;
 #include "static_queue.h"
 #define BLINK_GPIO 5 //esp32 thing gpio_led
 
-#define TRANSMISSION_PERIOD_MS 500
+#define TRANSMISSION_PERIOD_MS 200
 Static_Queue * ADCqueue;
 size_t bufferIndex = 0;
 static uint64_t dacount = 0;
+
 void blink_task(void *pvParameter)
 {
     /* Configure the IOMUX register for pad BLINK_GPIO (some pads are
@@ -50,7 +51,7 @@ void blink_task(void *pvParameter)
     gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
 
     uint8_t data[3] = {0x00, 0x00, '\0'};
-
+    printf("port, %d\n", portTICK_PERIOD_MS);
     while(1) {
         /* Blink off (output low) */
         gpio_set_level(BLINK_GPIO, 0);
@@ -87,6 +88,21 @@ void blink_task(void *pvParameter)
 
 static btstack_timer_source_t transmission_timer;
 
+
+void insert_int_in_buffer(char * buffer, uint32_t insert){
+    // buffer[0] = insert & 0xff;
+    // buffer[1] = (insert >> 8)  & 0xff;
+    // buffer[2] = (insert >> 16) & 0xff;
+    // buffer[3] = (insert >> 24) & 0xff;
+
+    buffer[3] = insert & 0xff;
+    buffer[2] = (insert >> 8)  & 0xff;
+    buffer[1] = (insert >> 16) & 0xff;
+    buffer[0] = (insert >> 24) & 0xff;
+
+    printf("[%x, %x, %x, %x], %u ", buffer[0], buffer[1], buffer[2], buffer[3], insert);
+}
+
 static void bt_transmission_handler(struct btstack_timer_source *ts){
     static int counter = 0;
 
@@ -95,9 +111,26 @@ static void bt_transmission_handler(struct btstack_timer_source *ts){
         //for (int i = 0; i< ADCqueue->size; i++){
         ///    printf("%d, ", ADCqueue->queue[i]);
         //}
-        while (!queueIsEmpty(ADCqueue)) {
-            length += sprintf(lineBuffer + length, "%d;", dequeue(ADCqueue));
+        dequeue_tuple deq;
+        int i = 0;
+        
+        while (!queueIsEmpty(ADCqueue) || i < 4) {
+            i++;
+            deq = dequeue(ADCqueue);
+            length += sprintf(lineBuffer + length, "%d;", deq.data);
         }
+        // char * buffer = &lineBuffer[0] + length;
+        // dequeue_tuple deq;
+        // int i = 0;
+        // while (!queueIsEmpty(ADCqueue) || i < 4) {
+        //     i++;
+        //     deq = dequeue(ADCqueue);
+        //     insert_int_in_buffer(buffer, deq.data);
+        //     buffer += sizeof(uint32_t);
+        //     insert_int_in_buffer(buffer, deq.time);
+        //     buffer += sizeof(uint32_t);
+        // }
+        sprintf(lineBuffer + length, "\0");
         printf("%s\n", lineBuffer);
 
         rfcomm_request_can_send_now_event(rfcomm_channel_id);
