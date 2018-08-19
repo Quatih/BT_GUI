@@ -99,28 +99,22 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
 	de_pop_sequence(service, attribute);
 	
 	// // 0x0009 "Bluetooth Profile Descriptor List"
-    de_add_number(service,  DE_UINT, DE_SIZE_16, BLUETOOTH_ATTRIBUTE_BLUETOOTH_PROFILE_DESCRIPTOR_LIST);
-    attribute = de_push_sequence(service);
-    {
-        de_add_uuid128(attribute, &SERVICE_UUID[0]);
-    }
-    de_pop_sequence(service, attribute);
-
-	//  attribute = de_push_sequence(service);
-	// {
+    // de_add_number(service,  DE_UINT, DE_SIZE_16, BLUETOOTH_ATTRIBUTE_BLUETOOTH_PROFILE_DESCRIPTOR_LIST);
+    // attribute = de_push_sequence(service);
+    // {
 	// 	uint8_t *Profile = de_push_sequence(attribute);
 	// 	{
-    //         //de_add_uuid128(Profile, SERVICE_UUID );
-	// 		de_add_number(Profile,  DE_UUID, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_SERIAL_PORT);
-	// 		de_add_number(Profile,  DE_UINT, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_LAN_ACCESS_USING_PPP);
+    //         de_add_number(Profile,  DE_UUID, DE_SIZE_16, 0xca36);
+	// 		// de_add_number(Profile,  DE_UUID, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_SERIAL_PORT);
+	// 		// de_add_number(Profile,  DE_UINT, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_LAN_ACCESS_USING_PPP);
 	// 	}
 	// 	de_pop_sequence(attribute, Profile);
-	// }
-	// de_pop_sequence(service, attribute);
-	
+    // }
+    // de_pop_sequence(service, attribute);
+
 	// 0x0100 "ServiceName"
-	de_add_number(service,  DE_UINT, DE_SIZE_16, 0x0100);
-	de_add_data(service,  DE_STRING, strlen(name), (uint8_t *) name);
+	de_add_number(service, DE_UINT, DE_SIZE_16, 0x0100);
+	de_add_data(service, DE_STRING, strlen(name), (uint8_t *) name);
 }
 
 

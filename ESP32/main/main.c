@@ -182,7 +182,7 @@ int btstack_main(int argc, const char * argv[]);
 int btstack_main(int argc, const char * argv[]){
     (void)argc;
     (void)argv;
-    int rfcomm_channel = rand() % 30 + 1; // select a channel from 1 to 30
+    int rfcomm_channel = esp_random() % 30 + 1; // select a channel from 1 to 30
     ADCqueue = queueCreate();
     printf("Channel set to %d\n", rfcomm_channel);
     one_shot_timer_setup();
