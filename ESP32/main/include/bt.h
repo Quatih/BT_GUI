@@ -11,7 +11,9 @@
 #include "adc.h"
 
 // for transmission
+
 char lineBuffer[70];
+uint8_t lineBufferIndex;
 
 static uint8_t SERVICE_UUID [] = {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99, 
                                   0x82, 0xec, 0x28, 0x68, 0x26, 0x2b, 0xd4, 0xe4};
@@ -224,7 +226,7 @@ static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *pack
                     }
                     break;
                 case RFCOMM_EVENT_CAN_SEND_NOW:
-                    rfcomm_send(rfcomm_channel_id, (uint8_t*) lineBuffer, strlen(lineBuffer));  
+                    rfcomm_send(rfcomm_channel_id, (uint8_t*) lineBuffer, lineBufferIndex);  
                     break;
               
                 case RFCOMM_EVENT_CHANNEL_CLOSED:

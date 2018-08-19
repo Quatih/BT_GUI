@@ -38,6 +38,60 @@ Static_Queue * ADCqueue;
 size_t bufferIndex = 0;
 static uint64_t dacount = 0;
 
+int insert_int_in_buffer(char * buffer, uint32_t insert){
+    // buffer[0] = insert & 0xff;
+    // buffer[1] = (insert >> 8)  & 0xff;
+    // buffer[2] = (insert >> 16) & 0xff;
+    // buffer[3] = (insert >> 24) & 0xff;
+
+    buffer[3] = insert & 0xff;
+    buffer[2] = (insert >> 8)  & 0xff;
+    buffer[1] = (insert >> 16) & 0xff;
+    buffer[0] = (insert >> 24) & 0xff;
+    
+    return 4;
+    // printf("[%x, %x, %x, %x], %u ", buffer[0], buffer[1], buffer[2], buffer[3], insert);
+}
+
+int put_measurements(char* buffer, int index){
+            //for (int i = 0; i< ADCqueue->size; i++){
+        ///    printf("%d, ", ADCqueue->queue[i]);
+        //}
+        char * start = buffer;
+        dequeue_tuple deq;
+        int i = 0;
+        int indexStart = index;
+        
+        // while (!queueIsEmpty(ADCqueue) || i < 4) {
+        //     i++;
+        //     deq = dequeue(ADCqueue);
+        //     length += sprintf(lineBuffer + length, "%d;", deq.data);
+        // }
+        // unsigned char data[sizeof(QueueType)+1];
+        // unsigned char time[sizeof(QueueTime)+1];
+        
+        
+        while (!queueIsEmpty(ADCqueue) && i < 4) {
+            i++;
+            deq = dequeue(ADCqueue);
+            index += insert_int_in_buffer(lineBuffer + index, deq.data);
+            index += insert_int_in_buffer(lineBuffer + index, deq.time);
+            // length += sprintf(lineBuffer+ length, "%s", &data[0]);
+            // length += sprintf(lineBuffer+ length, "%s", &time[0]);
+            // printf("%s%s\n", data, time);
+        }
+        // printf("len %d, i: %d \n", lineBufferIndex, i*8 );
+        buffer[0] = '\0';
+        i = 0;
+        // while(start[i]!= '\0'){
+        while(i < index - indexStart){
+            printf("%02x", start[i++]);
+        }
+        return index;
+        // sprintf(ref, "%s", temp);
+}
+
+
 void blink_task(void *pvParameter)
 {
     /* Configure the IOMUX register for pad BLINK_GPIO (some pads are
@@ -65,8 +119,12 @@ void blink_task(void *pvParameter)
         //sprintf(valbuffer, "%d\n;", adc_read());
         dacount += 1;
         enqueue(ADCqueue, dacount);
-        if (dacount == 100)
+        if (dacount == 15){
+            // lineBufferIndex = sprintf(lineBuffer, "Blaa:");
+            // put_measurements(lineBuffer + lineBufferIndex);
             dacount = 0;
+            // printf("%s\n", lineBuffer);
+        }
         // if(ADCqueue->size == MAX_SIZE-1){
         //     while(!queueIsEmpty(ADCqueue)) {
         //         printf("%u, ", dequeue(ADCqueue));
@@ -89,49 +147,14 @@ void blink_task(void *pvParameter)
 static btstack_timer_source_t transmission_timer;
 
 
-void insert_int_in_buffer(char * buffer, uint32_t insert){
-    // buffer[0] = insert & 0xff;
-    // buffer[1] = (insert >> 8)  & 0xff;
-    // buffer[2] = (insert >> 16) & 0xff;
-    // buffer[3] = (insert >> 24) & 0xff;
-
-    buffer[3] = insert & 0xff;
-    buffer[2] = (insert >> 8)  & 0xff;
-    buffer[1] = (insert >> 16) & 0xff;
-    buffer[0] = (insert >> 24) & 0xff;
-
-    printf("[%x, %x, %x, %x], %u ", buffer[0], buffer[1], buffer[2], buffer[3], insert);
-}
 
 static void bt_transmission_handler(struct btstack_timer_source *ts){
     static int counter = 0;
 
     if (rfcomm_channel_id){
-        int length = sprintf(lineBuffer, "%04u:", ++counter);
-        //for (int i = 0; i< ADCqueue->size; i++){
-        ///    printf("%d, ", ADCqueue->queue[i]);
-        //}
-        dequeue_tuple deq;
-        int i = 0;
-        
-        while (!queueIsEmpty(ADCqueue) || i < 4) {
-            i++;
-            deq = dequeue(ADCqueue);
-            length += sprintf(lineBuffer + length, "%d;", deq.data);
-        }
-        // char * buffer = &lineBuffer[0] + length;
-        // dequeue_tuple deq;
-        // int i = 0;
-        // while (!queueIsEmpty(ADCqueue) || i < 4) {
-        //     i++;
-        //     deq = dequeue(ADCqueue);
-        //     insert_int_in_buffer(buffer, deq.data);
-        //     buffer += sizeof(uint32_t);
-        //     insert_int_in_buffer(buffer, deq.time);
-        //     buffer += sizeof(uint32_t);
-        // }
-        sprintf(lineBuffer + length, "\0");
-        printf("%s\n", lineBuffer);
+        lineBufferIndex = sprintf(lineBuffer, "%04u:", ++counter);
+        // printf("line: %02x, buffer: %02x, len: %d \n",&lineBuffer[0], &lineBuffer[lineBufferIndex], lineBufferIndex );
+        lineBufferIndex = put_measurements(lineBuffer, lineBufferIndex);
 
         rfcomm_request_can_send_now_event(rfcomm_channel_id);
     }
