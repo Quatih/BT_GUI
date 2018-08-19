@@ -1,132 +1,23 @@
 import os
 import wx
-from bluetooth import *
 import time
 import threading
 import select
 import atexit
 import pickle
 
+from BTServer import *
+from TimerThread import *
 filename = "BT_GUI.dat"
 outputfile = "output.csv"
-# custom thread with timer functions and a callback
-class TimerThread(threading.Thread):
-    def __init__(self, timeout=3, sleep_chunk=0.25, callback=None, *args):
-        threading.Thread.__init__(self)
 
-        self.timeout = timeout
-        self.sleep_chunk = sleep_chunk
-        if callback == None:
-            self.callback = None
-        else:
-            self.callback = callback
-        self.callback_args = args
-
-        self.terminate_event = threading.Event()
-        self.start_event = threading.Event()
-        self.reset_event = threading.Event()
-        self.count = self.timeout/self.sleep_chunk
-
-    def run(self):
-        while not self.terminate_event.is_set():
-            while self.count > 0 and self.start_event.is_set():
-                # print self.count
-                # time.sleep(self.sleep_chunk)
-                # if self.reset_event.is_set():
-                if self.reset_event.wait(self.sleep_chunk):  # wait for a small chunk of timeout
-                    self.reset_event.clear()
-                    self.count = self.timeout/self.sleep_chunk  # reset
-                self.count -= 1
-            if self.count <= 0:
-                self.start_event.set()
-                #print 'timeout. calling function...'
-                #try:
-                self.callback(*self.callback_args)
-                self.count = self.timeout/self.sleep_chunk  #reset
-                #except:
-                #   print("Error in callback function")
-                
-
-    def start_timer(self):
-        self.start_event.set()
-
-    def stop_timer(self):
-        self.start_event.clear()
-        self.count = self.timeout / self.sleep_chunk  # reset
-
-    def restart_timer(self):
-        # reset only if timer is running. otherwise start timer afresh
-        if self.start_event.is_set():
-            self.reset_event.set()
-        else:
-            self.start_event.set()
-
-    def terminate(self):
-        self.terminate_event.set()
-
-# Class for setting up a connection with a server application
-class BTServer:
-    
-    sock = None
-    connected = False
-    def __init__(self):
-        pass
-    def connect(self, match):
-        self.port = match["port"]
-        self.name = match["name"]
-        self.host = match["host"]
-        print ("connecting to", self.host)
-        self.sock=BluetoothSocket( RFCOMM )
-        # for L2CAP 
-        # self.sock.connect(self.host, self.port)
-        # for RFCOMM
-        self.sock.connect((self.host, self.port))
-
-    # returns list of servers with the matching service
-    def find(self, _name = None, _uuid = None):
-        try:
-            service_matches = find_service(uuid = _uuid)
-            if len(service_matches) == 0:
-                print ("couldn't find the service")
-                return [] 
-            else:
-                print ("Found service!")
-                for items in service_matches:
-                    print("%s" % items)
-                return service_matches
-        except:
-            print("No service found.")
-            return []        
-
-    def receive(self):
-        try:
-            data = self.sock.recv(1024)
-            print ("received [%s]" % data)
-            return data
-        except: 
-            print("Receive failed")
-            self.close()
-            return None
-
-    def send(self, data):
-        try:
-            self.sock.send(data)
-        except:
-            print("sending data failed")
-            self.close()
-
-    def close(self): 
-        if not self.sock is None:
-            self.sock.close()
-            self.connected = False
-        
-    
 class Client_GUI(wx.Frame):
     device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
     device_selected = 0
     server = None
     matches = None
     output_file = None
+    fileAccess = False
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(300,150))
         #self.control = wx.TextCtrl(self, style=wx.TE_MULTILINE)
@@ -291,10 +182,11 @@ class Client_GUI(wx.Frame):
         #threading.Timer(1, self.ReceivePacket).start()
         data = self.server.receive()
         if (data is not None):
+            self.fileAccess = True
             print(data)
             length = len(data) # 5 starting bytes
             print("packet length:", length)
-            for i in range(5, length, 8):
+            for i in range(0, length - length % 8, 8):
                 item = [data[i], data[i+1], data[i+2], data[i+3]]
                 time = [data[i+4], data[i+5], data[i+6], data[i+7]]
                 num = int.from_bytes(item, byteorder='big', signed=True)
@@ -303,10 +195,13 @@ class Client_GUI(wx.Frame):
                     self.output_file.write("%d;%u\n" %(num, num2))
                 except Exception as err: 
                     print("Failed to write to file, error:", err)
+                    
                 print(num, num2) 
+            self.fileAccess = False
         else:
             if not self.output_file is None:
                 self.output_file.close()
+            raise ReceiveError()
 
     def BTScan(self):
         print("Scanning for servers")
@@ -350,7 +245,12 @@ class Client_GUI(wx.Frame):
         exit()
 
     def exit(self):
+        self.sendThread.terminate()
+        self.recThread.terminate()
+
         if not self.output_file is None:
+            while(self.fileAccess):
+                pass
             self.output_file.close()
         if not self.server is None:
             self.server.close()
