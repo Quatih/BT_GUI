@@ -33,9 +33,8 @@ static spi_device_handle_t spi;
 #include "static_queue.h"
 #define BLINK_GPIO 5 //esp32 thing gpio_led
 
-#define TRANSMISSION_PERIOD_MS 200
+#define TRANSMISSION_PERIOD_MS 500
 Static_Queue * ADCqueue;
-size_t bufferIndex = 0;
 static uint64_t dacount = 0;
 
 int insert_int_in_buffer(char * buffer, uint32_t insert){
@@ -154,7 +153,7 @@ static void bt_transmission_handler(struct btstack_timer_source *ts){
     if (rfcomm_channel_id){
         // lineBufferIndex = sprintf(lineBuffer, "%04u:", ++counter);
         // printf("line: %02x, buffer: %02x, len: %d \n",&lineBuffer[0], &lineBuffer[lineBufferIndex], lineBufferIndex );
-        lineBufferIndex = put_measurements(lineBuffer, lineBufferIndex);
+        lineBufferIndex = put_measurements(lineBuffer, 0);
 
         rfcomm_request_can_send_now_event(rfcomm_channel_id);
     }

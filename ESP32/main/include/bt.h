@@ -12,7 +12,7 @@
 
 // for transmission
 
-char lineBuffer[70];
+char lineBuffer[100];
 uint8_t lineBufferIndex;
 
 static uint8_t SERVICE_UUID [] = {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99, 
