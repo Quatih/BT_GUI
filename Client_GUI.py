@@ -8,6 +8,7 @@ import atexit
 import pickle
 
 filename = "BT_GUI.dat"
+outputfile = "output.csv"
 # custom thread with timer functions and a callback
 class TimerThread(threading.Thread):
     def __init__(self, timeout=3, sleep_chunk=0.25, callback=None, *args):
@@ -39,11 +40,11 @@ class TimerThread(threading.Thread):
             if self.count <= 0:
                 self.start_event.set()
                 #print 'timeout. calling function...'
-                try:
-                    self.callback(*self.callback_args)
-                    self.count = self.timeout/self.sleep_chunk  #reset
-                except:
-                   print("Error in callback function")
+                #try:
+                self.callback(*self.callback_args)
+                self.count = self.timeout/self.sleep_chunk  #reset
+                #except:
+                #   print("Error in callback function")
                 
 
     def start_timer(self):
@@ -104,6 +105,7 @@ class BTServer:
             return data
         except: 
             print("Receive failed")
+            self.close()
             return None
 
     def send(self, data):
@@ -124,6 +126,7 @@ class Client_GUI(wx.Frame):
     device_selected = 0
     server = None
     matches = None
+    output_file = None
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(300,150))
         #self.control = wx.TextCtrl(self, style=wx.TE_MULTILINE)
@@ -270,6 +273,7 @@ class Client_GUI(wx.Frame):
                 print("Failed to connect")
                 self.server.connected = False
             else:
+                self.output_file = open(outputfile, "a+")
                 self.sendThread = TimerThread(1, 0.25, self.SendPacket)
                 self.sendThread.daemon = True
                 self.sendThread.start()
@@ -295,9 +299,14 @@ class Client_GUI(wx.Frame):
                 time = [data[i+4], data[i+5], data[i+6], data[i+7]]
                 num = int.from_bytes(item, byteorder='big', signed=True)
                 num2 = int.from_bytes(time, byteorder='big', signed=False)
+                try:
+                    self.output_file.write("%d;%u\n" %(num, num2))
+                except Exception as err: 
+                    print("Failed to write to file, error:", err)
                 print(num, num2) 
         else:
-            print("No data received")
+            if not self.output_file is None:
+                self.output_file.close()
 
     def BTScan(self):
         print("Scanning for servers")
@@ -341,6 +350,8 @@ class Client_GUI(wx.Frame):
         exit()
 
     def exit(self):
+        if not self.output_file is None:
+            self.output_file.close()
         if not self.server is None:
             self.server.close()
 
