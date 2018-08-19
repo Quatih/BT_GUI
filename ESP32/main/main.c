@@ -152,7 +152,7 @@ static void bt_transmission_handler(struct btstack_timer_source *ts){
     static int counter = 0;
 
     if (rfcomm_channel_id){
-        lineBufferIndex = sprintf(lineBuffer, "%04u:", ++counter);
+        // lineBufferIndex = sprintf(lineBuffer, "%04u:", ++counter);
         // printf("line: %02x, buffer: %02x, len: %d \n",&lineBuffer[0], &lineBuffer[lineBufferIndex], lineBufferIndex );
         lineBufferIndex = put_measurements(lineBuffer, lineBufferIndex);
 
