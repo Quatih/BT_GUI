@@ -5,6 +5,9 @@ import time
 import threading
 import select
 import atexit
+import pickle
+
+filename = "BT_GUI.dat"
 # custom thread with timer functions and a callback
 class TimerThread(threading.Thread):
     def __init__(self, timeout=3, sleep_chunk=0.25, callback=None, *args):
@@ -64,25 +67,33 @@ class BTServer:
     
     sock = None
     connected = False
-    def __init__(self):
-        pass
+    def __init__(self, matches= None):
+        self.matches = matches
+
     def connect(self, match):
         self.port = match["port"]
         self.name = match["name"]
         self.host = match["host"]
-        print ("connecting to ", self.host)
+        print ("connecting to", self.host)
         self.sock=BluetoothSocket( RFCOMM )
         # for L2CAP 
         # self.sock.connect(self.host, self.port)
         # for RFCOMM
-        self.sock.connect((self.host, self.port))
-        self.connected = True
+        try:
+            self.sock.connect((self.host, self.port))
+            self.connected = True
+        except:
+            print("Failed to connect")
+
+    def connect(self):
+        connect(self.matches)
+
     # returns list of servers with the matching service
     def find(self, _name = None, _uuid = None):
         try:
             service_matches = find_service(uuid = _uuid)
             if len(service_matches) == 0:
-                print ("couldn't find the service", self.name)
+                print ("couldn't find the service")
                 return [] 
             else:
                 print ("Found service!")
@@ -125,7 +136,7 @@ class Client_GUI(wx.Frame):
         mainSizer = wx.BoxSizer(wx.VERTICAL)
         panel = wx.Panel(self) 
         box = wx.BoxSizer(wx.HORIZONTAL) 
-            
+
         self.text = wx.TextCtrl(panel,style = wx.TE_MULTILINE) 
             
         self.device_names = []   
@@ -167,8 +178,34 @@ class Client_GUI(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
         #self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
         self.Show(True)
-        OnScan()
-        
+        try:
+            fh = open(filename, "r")
+            matches = pickle.load(fh)
+        except:
+            print ("Error: can\'t find file or read data")
+            self.server= BTServer()
+            thread = threading.Thread(target=self.BTScan)
+            thread.daemon = True
+            thread.start()
+        else:
+            fh.close()
+            self.server = BTServer(matches)
+            names = []
+            for service in matches:
+                name = service["name"]
+                if not name is None:
+                    name = name.decode("utf-8")
+                else:
+                    name = "N/A"
+                host = service["host"]
+                if host is None:
+                    host = "N/A"
+                
+                name += ", host: "
+                name += host
+                names.append(name)
+            wx.CallAfter(self.lst.AppendItems, names)
+
     def onListBox(self, e): 
         self.device_selected = self.lst.GetSelection()
         self.text.AppendText( "Current selection: "+e.GetEventObject().GetStringSelection()+ " index: %d\n" %(self.device_selected))
@@ -243,20 +280,18 @@ class Client_GUI(wx.Frame):
     def ReceivePacket(self):
         #threading.Timer(1, self.ReceivePacket).start()
         data = self.server.receive()
+        print(data)
         length = len(data) # 5 starting bytes
-        print("packet length: ", length)
-        for i in range(5, length-8, 8):
-            data = [data[i], data[i+1], data[i+2], data[i+3]]
-            i = i + 4
-            time = [data[i], data[i+1], data[i+2], data[i+3]]
-            i = i + 4
-            # num = int(data.encode('hex'), 16)
-            num2 = int(data.encode('hex'), 16)
+        print("packet length:", length)
+        for i in range(5, length, 8):
+            item = [data[i], data[i+1], data[i+2], data[i+3]]
+            time = [data[i+4], data[i+5], data[i+6], data[i+7]]
+            num = int.from_bytes(item, byteorder='big', signed=True)
+            num2 = int.from_bytes(time, byteorder='big', signed=False)
             print(num, num2) 
 
     def BTScan(self):
         print("Scanning for servers")
-        self.server = BTServer()
         self.matches = self.server.find(_name = "BT_Sense", _uuid = self.device_uuid) 
         # empty list
         if(not self.matches):
@@ -277,6 +312,15 @@ class Client_GUI(wx.Frame):
                 name += ", host: "
                 name += host
                 names.append(name)
+            try:
+                fh = open(filename, "w+")
+                pickle.dump(fh, service_matches)
+            except:
+                print ("Error: can\'t find file or write data")
+            else:
+                print("Wrote matches to file")
+                fh.close()
+
             wx.CallAfter(self.lst.AppendItems, names)
 
     def OnExit(self,e):
