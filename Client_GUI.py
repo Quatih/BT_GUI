@@ -36,10 +36,10 @@ class TimerThread(threading.Thread):
             if self.count <= 0:
                 self.start_event.set()
                 #print 'timeout. calling function...'
-                try:
-                    self.callback(*self.callback_args)
-                except:
-                    print("Connection closed before receive")
+                #try:
+                self.callback(*self.callback_args)
+                #except:
+                #   print("Error in callback function")
                 self.count = self.timeout/self.sleep_chunk  #reset
 
     def start_timer(self):
@@ -94,12 +94,19 @@ class BTServer:
             return []        
 
     def receive(self):
-        data = self.sock.recv(1024)
-        print ("received [%s]" % data)
-        return data
+        try:
+            data = self.sock.recv(1024)
+            print ("received [%s]" % data)
+            return data
+        except: 
+            print("Receive failed")
+            return None
 
     def send(self, data):
-        self.sock.send(data)
+        try:
+            self.sock.send(data)
+        except:
+            print("sending data failed")
 
     def close(self): 
         if not self.sock is None:
@@ -160,7 +167,8 @@ class Client_GUI(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
         #self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
         self.Show(True)
-
+        OnScan()
+        
     def onListBox(self, e): 
         self.device_selected = self.lst.GetSelection()
         self.text.AppendText( "Current selection: "+e.GetEventObject().GetStringSelection()+ " index: %d\n" %(self.device_selected))
@@ -234,7 +242,17 @@ class Client_GUI(wx.Frame):
 
     def ReceivePacket(self):
         #threading.Timer(1, self.ReceivePacket).start()
-        rec = self.server.receive()
+        data = self.server.receive()
+        length = len(data) # 5 starting bytes
+        print("packet length: ", length)
+        for i in range(5, length-8, 8):
+            data = [data[i], data[i+1], data[i+2], data[i+3]]
+            i = i + 4
+            time = [data[i], data[i+1], data[i+2], data[i+3]]
+            i = i + 4
+            # num = int(data.encode('hex'), 16)
+            num2 = int(data.encode('hex'), 16)
+            print(num, num2) 
 
     def BTScan(self):
         print("Scanning for servers")
