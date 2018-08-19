@@ -25,19 +25,29 @@
 
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
+#include <time.h>
+#include <sys/time.h>
 
 static spi_device_handle_t spi;
 #include "spi.h"
-
 //#include "queue.h"
 #include "static_queue.h"
 #define BLINK_GPIO 5 //esp32 thing gpio_led
-
-#define TRANSMISSION_PERIOD_MS 500
+#define LINEBUFFER_BYTES 8*125
+#define TRANSMISSION_PERIOD_MS 1
 Static_Queue * ADCqueue;
 static uint64_t dacount = 0;
 
-int insert_int_in_buffer(char * buffer, uint32_t insert){
+uint32_t get_msecs() {
+
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL);
+    uint32_t ret = (uint32_t) (tv.tv_sec * 1000LL + (tv.tv_usec / 1000LL));
+    return ret;
+}
+
+int insert_int_in_buffer(uint8_t * buffer, uint32_t insert){
     // buffer[0] = insert & 0xff;
     // buffer[1] = (insert >> 8)  & 0xff;
     // buffer[2] = (insert >> 16) & 0xff;
@@ -52,12 +62,12 @@ int insert_int_in_buffer(char * buffer, uint32_t insert){
     // printf("[%x, %x, %x, %x], %u ", buffer[0], buffer[1], buffer[2], buffer[3], insert);
 }
 
-int put_measurements(char* buffer, int index){
+int put_measurements(uint8_t* buffer, int index){
             //for (int i = 0; i< ADCqueue->size; i++){
         ///    printf("%d, ", ADCqueue->queue[i]);
         //}
-        char * start = buffer;
-        dequeue_tuple deq;
+        uint8_t * start = buffer;
+        val_tuple deq;
         int i = 0;
         int indexStart = index;
         
@@ -70,7 +80,7 @@ int put_measurements(char* buffer, int index){
         // unsigned char time[sizeof(QueueTime)+1];
         
         
-        while (!queueIsEmpty(ADCqueue) && i < 4) {
+        while (!queueIsEmpty(ADCqueue) || index < (LINEBUFFER_BYTES - 8)) {
             i++;
             deq = dequeue(ADCqueue);
             index += insert_int_in_buffer(lineBuffer + index, deq.data);
@@ -83,9 +93,9 @@ int put_measurements(char* buffer, int index){
         buffer[0] = '\0';
         i = 0;
         // while(start[i]!= '\0'){
-        while(i < index - indexStart){
-            printf("%02x", start[i++]);
-        }
+        // while(i < index - indexStart){
+        //     printf("%02x", start[i++]);
+        // }
         return index;
         // sprintf(ref, "%s", temp);
 }
@@ -107,17 +117,17 @@ void blink_task(void *pvParameter)
     printf("port, %d\n", portTICK_PERIOD_MS);
     while(1) {
         /* Blink off (output low) */
-        gpio_set_level(BLINK_GPIO, 0);
-        vTaskDelay(50 / portTICK_PERIOD_MS);
-        /* Blink on (output hivalbuffergh) */
-        gpio_set_level(BLINK_GPIO, 1);
-        vTaskDelay(2 / portTICK_PERIOD_MS);
+        // gpio_set_level(BLINK_GPIO, 0);
+        // vTaskDelay(50 / portTICK_PERIOD_MS);
+        // /* Blink on (output hivalbuffergh) */
+        // gpio_set_level(BLINK_GPIO, 1);
+         vTaskDelay(1 / portTICK_PERIOD_MS);
 
 		//printf("blink_task is running\n");
 		//printf("adc reading: %d\n", adc_read());
         //sprintf(valbuffer, "%d\n;", adc_read());
         dacount += 1;
-        enqueue(ADCqueue, dacount);
+        enqueue(ADCqueue, (val_tuple) {dacount, get_msecs()});
         if (dacount == 15){
             // lineBufferIndex = sprintf(lineBuffer, "Blaa:");
             // put_measurements(lineBuffer + lineBufferIndex);
@@ -130,10 +140,10 @@ void blink_task(void *pvParameter)
         //     }
         //     printf("\nIndex: %d\n", ADCqueue->size);
         // }
-		data[1]++;
-		if(data[1] == 0x8F)
-			data[1] = 0;
-		rheo_send_data(data);
+		// data[1]++;
+		// if(data[1] == 0x8F)
+		// 	data[1] = 0;
+		// rheo_send_data(data);
     }
 }
 
@@ -145,15 +155,13 @@ void blink_task(void *pvParameter)
 
 static btstack_timer_source_t transmission_timer;
 
-
-
 static void bt_transmission_handler(struct btstack_timer_source *ts){
-    static int counter = 0;
+    // static int counter = 0;
 
     if (rfcomm_channel_id){
         // lineBufferIndex = sprintf(lineBuffer, "%04u:", ++counter);
         // printf("line: %02x, buffer: %02x, len: %d \n",&lineBuffer[0], &lineBuffer[lineBufferIndex], lineBufferIndex );
-        lineBufferIndex = put_measurements(lineBuffer, 0);
+        // lineBufferIndex = put_measurements(lineBuffer, 0);
 
         rfcomm_request_can_send_now_event(rfcomm_channel_id);
     }
@@ -199,11 +207,12 @@ int btstack_main(int argc, const char * argv[]){
     }
     ESP_ERROR_CHECK( ret );
 
-	xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE*4, NULL, 5, NULL); //minimal stack size(128) is too small for blink task.
-
+	// xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE*4, NULL, 5, NULL); //minimal stack size(128) is too small for blink task.
+    lineBufferIndex = LINEBUFFER_BYTES;
     // turn on!
     hci_power_control(HCI_POWER_ON);
-    
+    lineBuffer = (uint8_t*) malloc(sizeof (uint8_t) * LINEBUFFER_BYTES); // allocate space for 100 measurements
+    memset(lineBuffer, 0, LINEBUFFER_BYTES);
     return 0;
 }
 /* EXAMPLE_END */

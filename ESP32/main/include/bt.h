@@ -12,8 +12,8 @@
 
 // for transmission
 
-char lineBuffer[100];
-uint8_t lineBufferIndex;
+uint8_t * lineBuffer;
+uint32_t lineBufferIndex;
 
 static uint8_t SERVICE_UUID [] = {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99, 
                                   0x82, 0xec, 0x28, 0x68, 0x26, 0x2b, 0xd4, 0xe4};
@@ -22,7 +22,7 @@ static uint8_t SERVICE_UUID [] = {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99
 static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
 
 uint16_t rfcomm_channel_id;
-static uint8_t  spp_service_buffer[150];
+static uint8_t * spp_service_buffer;
 static btstack_packet_callback_registration_t hci_event_callback_registration;
 
 
@@ -99,8 +99,14 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
 	de_pop_sequence(service, attribute);
 	
 	// // 0x0009 "Bluetooth Profile Descriptor List"
-	// de_add_number(service,  DE_UINT, DE_SIZE_16, BLUETOOTH_ATTRIBUTE_BLUETOOTH_PROFILE_DESCRIPTOR_LIST);
-	// attribute = de_push_sequence(service);
+    de_add_number(service,  DE_UINT, DE_SIZE_16, BLUETOOTH_ATTRIBUTE_BLUETOOTH_PROFILE_DESCRIPTOR_LIST);
+    attribute = de_push_sequence(service);
+    {
+        de_add_uuid128(attribute, &SERVICE_UUID[0]);
+    }
+    de_pop_sequence(service, attribute);
+
+	//  attribute = de_push_sequence(service);
 	// {
 	// 	uint8_t *Profile = de_push_sequence(attribute);
 	// 	{
@@ -121,6 +127,7 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
 
 static void service_setup(int rfcomm_channel){
     // register for HCI events
+    spp_service_buffer = (uint8_t*) malloc(sizeof(uint8_t)*114);
     hci_event_callback_registration.callback = &packet_handler;
     hci_add_event_handler(&hci_event_callback_registration);
 
@@ -131,7 +138,7 @@ static void service_setup(int rfcomm_channel){
 
     // init SDP, create record for SPP and register with SDP
     sdp_init();
-    memset(spp_service_buffer, 0, sizeof(spp_service_buffer));
+    memset(spp_service_buffer, 0, 91);
     create_custom_sdp_record(spp_service_buffer, 0x10001, rfcomm_channel, "BT_Sense");
    // printf("Before dump: %u\n\r", de_get_len((uint8_t*)spp_service_buffer));
     //de_dump_data_element((uint8_t*)spp_service_buffer);
@@ -141,6 +148,7 @@ static void service_setup(int rfcomm_channel){
     //sdp_client_query_rfcomm_register_callback(handle_query_rfcomm_event , NULL);
 
     printf("SDP service record size: %u\n", de_get_len(spp_service_buffer));
+    // free(spp_service_buffer);
 }
 
 /* @section Bluetooth Logic 
