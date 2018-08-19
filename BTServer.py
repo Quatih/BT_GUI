@@ -3,7 +3,7 @@ from bluetooth import *
 import time
 # Class for setting up a connection with a server application
 class BTServer:
-    
+    packets = 0
     sock = None
     connected = False
     def __init__(self):
@@ -18,6 +18,7 @@ class BTServer:
         # self.sock.connect(self.host, self.port)
         # for RFCOMM
         self.sock.connect((self.host, self.port))
+        packets = 0
 
     # returns list of servers with the matching service
     def find(self, _name = None, _uuid = None):
@@ -37,8 +38,9 @@ class BTServer:
 
     def receive(self):
         try:
-            data = self.sock.recv(1024)
-            print ("received [%s]" % data)
+            data = self.sock.recv(10000000)
+            self.packets = self.packets + len(data)
+            # print ("received [%s]" % data)
             return data
         except: 
             print("Receive failed")

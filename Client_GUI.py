@@ -146,7 +146,7 @@ class Client_GUI(wx.Frame):
             if self.server.connected:
                 self.sendThread.stop_timer()
                 self.recThread.stop_timer()
-                
+                self.countThread.stop_timer()
                 print("Closed connection to %s" %self.server.name)
                 self.exit()
             else:
@@ -169,10 +169,18 @@ class Client_GUI(wx.Frame):
                 self.sendThread.daemon = True
                 self.sendThread.start()
                 self.sendThread.start_timer()
-                self.recThread = TimerThread(0.1, 0.025, self.ReceivePacket)
+                self.recThread = TimerThread(0.0001, 0.000025, self.ReceivePacket)
                 self.recThread.daemon = True
                 self.recThread.start()
                 self.recThread.start_timer()
+                self.countThread = TimerThread(1, 0.25, self.countPackets)
+                self.countThread.daemon = True
+                self.countThread.start()
+                self.countThread.start_timer()
+
+    def countPackets(self):
+        print(self.server.packets)
+        self.server.packets = 0
 
     def SendPacket(self):
         #threading.Timer(1, self.SendPacket).start()
@@ -183,7 +191,7 @@ class Client_GUI(wx.Frame):
         data = self.server.receive()
         if (data is not None):
             self.fileAccess = True
-            print(data)
+            # print(data)
             length = len(data) # 5 starting bytes
             print("packet length:", length)
             for i in range(0, length - length % 8, 8):
@@ -196,7 +204,7 @@ class Client_GUI(wx.Frame):
                 except Exception as err: 
                     print("Failed to write to file, error:", err)
                     
-                print(num, num2) 
+                # print(num, num2) 
             self.fileAccess = False
         else:
             if not self.output_file is None:
