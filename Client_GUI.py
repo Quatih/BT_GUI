@@ -39,11 +39,12 @@ class TimerThread(threading.Thread):
             if self.count <= 0:
                 self.start_event.set()
                 #print 'timeout. calling function...'
-                #try:
-                self.callback(*self.callback_args)
-                #except:
-                #   print("Error in callback function")
-                self.count = self.timeout/self.sleep_chunk  #reset
+                try:
+                    self.callback(*self.callback_args)
+                    self.count = self.timeout/self.sleep_chunk  #reset
+                except:
+                   print("Error in callback function")
+                
 
     def start_timer(self):
         self.start_event.set()
@@ -67,9 +68,8 @@ class BTServer:
     
     sock = None
     connected = False
-    def __init__(self, matches= None):
-        self.matches = matches
-
+    def __init__(self):
+        pass
     def connect(self, match):
         self.port = match["port"]
         self.name = match["name"]
@@ -79,14 +79,7 @@ class BTServer:
         # for L2CAP 
         # self.sock.connect(self.host, self.port)
         # for RFCOMM
-        try:
-            self.sock.connect((self.host, self.port))
-            self.connected = True
-        except:
-            print("Failed to connect")
-
-    def connect(self):
-        connect(self.matches)
+        self.sock.connect((self.host, self.port))
 
     # returns list of servers with the matching service
     def find(self, _name = None, _uuid = None):
@@ -118,6 +111,7 @@ class BTServer:
             self.sock.send(data)
         except:
             print("sending data failed")
+            self.close()
 
     def close(self): 
         if not self.sock is None:
@@ -178,33 +172,41 @@ class Client_GUI(wx.Frame):
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
         #self.Bind(wx.EVT_MENU, self.OnOpen, menuOpen)
         self.Show(True)
+        self.server = BTServer()
         try:
-            fh = open(filename, "r")
-            matches = pickle.load(fh)
+            fh = open(filename, "rb")
         except:
-            print ("Error: can\'t find file or read data")
+            print ("Error: can\'t find file")
             self.server= BTServer()
             thread = threading.Thread(target=self.BTScan)
             thread.daemon = True
             thread.start()
         else:
+            try:
+                self.matches = pickle.load(fh)
+            except:
+                print("Failed to load from file")
+                thread = threading.Thread(target=self.BTScan)
+                thread.daemon = True
+                thread.start()
+            else:
+                names = []
+                for service in self.matches:
+                    name = service["name"]
+                    if not name is None:
+                        name = name.decode("utf-8")
+                    else:
+                        name = "N/A"
+                    host = service["host"]
+                    if host is None:
+                        host = "N/A"
+                    
+                    name += ", host: "
+                    name += host
+                    names.append(name)
+                wx.CallAfter(self.lst.AppendItems, names)
+            
             fh.close()
-            self.server = BTServer(matches)
-            names = []
-            for service in matches:
-                name = service["name"]
-                if not name is None:
-                    name = name.decode("utf-8")
-                else:
-                    name = "N/A"
-                host = service["host"]
-                if host is None:
-                    host = "N/A"
-                
-                name += ", host: "
-                name += host
-                names.append(name)
-            wx.CallAfter(self.lst.AppendItems, names)
 
     def onListBox(self, e): 
         self.device_selected = self.lst.GetSelection()
@@ -261,17 +263,21 @@ class Client_GUI(wx.Frame):
         if not self.matches:
             pass
         else:
-            self.server.connect(self.matches[self.lst.GetSelection()])
-            #self.sendThread = threading.Thread(target=self.SendPacket)
-            self.sendThread = TimerThread(1, 0.25, self.SendPacket)
-            self.sendThread.daemon = True
-            self.sendThread.start()
-            self.sendThread.start_timer()
-            self.recThread = TimerThread(0.1, 0.025, self.ReceivePacket)
-            #self.recThread = threading.Thread(target=self.ReceivePacket)
-            self.recThread.daemon = True
-            self.recThread.start()
-            self.recThread.start_timer()
+            try:
+                self.server.connect(self.matches[self.lst.GetSelection()])
+                self.server.connected = True
+            except:
+                print("Failed to connect")
+                self.server.connected = False
+            else:
+                self.sendThread = TimerThread(1, 0.25, self.SendPacket)
+                self.sendThread.daemon = True
+                self.sendThread.start()
+                self.sendThread.start_timer()
+                self.recThread = TimerThread(0.1, 0.025, self.ReceivePacket)
+                self.recThread.daemon = True
+                self.recThread.start()
+                self.recThread.start_timer()
 
     def SendPacket(self):
         #threading.Timer(1, self.SendPacket).start()
@@ -280,15 +286,18 @@ class Client_GUI(wx.Frame):
     def ReceivePacket(self):
         #threading.Timer(1, self.ReceivePacket).start()
         data = self.server.receive()
-        print(data)
-        length = len(data) # 5 starting bytes
-        print("packet length:", length)
-        for i in range(5, length, 8):
-            item = [data[i], data[i+1], data[i+2], data[i+3]]
-            time = [data[i+4], data[i+5], data[i+6], data[i+7]]
-            num = int.from_bytes(item, byteorder='big', signed=True)
-            num2 = int.from_bytes(time, byteorder='big', signed=False)
-            print(num, num2) 
+        if (data is not None):
+            print(data)
+            length = len(data) # 5 starting bytes
+            print("packet length:", length)
+            for i in range(5, length, 8):
+                item = [data[i], data[i+1], data[i+2], data[i+3]]
+                time = [data[i+4], data[i+5], data[i+6], data[i+7]]
+                num = int.from_bytes(item, byteorder='big', signed=True)
+                num2 = int.from_bytes(time, byteorder='big', signed=False)
+                print(num, num2) 
+        else:
+            print("No data received")
 
     def BTScan(self):
         print("Scanning for servers")
@@ -313,11 +322,15 @@ class Client_GUI(wx.Frame):
                 name += host
                 names.append(name)
             try:
-                fh = open(filename, "w+")
-                pickle.dump(fh, service_matches)
+                fh = open(filename, "wb+")
             except:
-                print ("Error: can\'t find file or write data")
+                print ("Error: can\'t find file or create it")
             else:
+                #try: 
+                pickle.dump(self.matches, fh)
+                #except:
+                   # print("failed to dump object")
+                #else:
                 print("Wrote matches to file")
                 fh.close()
 
