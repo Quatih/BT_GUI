@@ -160,8 +160,8 @@ class Client_GUI(wx.Frame):
             try:
                 self.server.connect(self.matches[self.lst.GetSelection()])
                 self.server.connected = True
-            except:
-                print("Failed to connect")
+            except Exception as err:
+                print("Failed to connect: ", err )
                 self.server.connected = False
             else:
                 self.output_file = open(outputfile, "a+")
@@ -266,5 +266,6 @@ class Client_GUI(wx.Frame):
 app = wx.App(False)
 frame = Client_GUI(None, "BT_Client")
 
+# create an exit call when the program exits
 atexit.register(frame.exit)
 app.MainLoop()
