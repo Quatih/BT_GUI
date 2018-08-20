@@ -22,7 +22,15 @@ static uint8_t SERVICE_UUID [] = {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99
 static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
 
 uint16_t rfcomm_channel_id;
-static uint8_t * spp_service_buffer;
+
+// Output from create_custom_sdp_record, intended to reduce RAM footprint
+
+extern uint8_t spp_service_buffer[] = {0x36,0x0,0x58,0x9,0x0,0x0,0xa,0x0,0x1,0x0,0x1,0x9,0x0,
+0x1,0x36,0x0,0x11,0x1c,0xf,0xd5,0xca,0x36,0x4e,0x7d,0x4f,0x99,0x82,0xec,0x28,0x68,0x26,0x2b,0xd4,0xe4,
+0x9,0x0,0x4,0x36,0x0,0xe,0x36,0x0,0x3,0x19,0x1,0x0,0x36,0x0,0x5,0x19,0x0,0x3,0x8,0x11,0x9,0x0,0x5,0x36,
+0x0,0x3,0x19,0x10,0x2,0x9,0x0,0x6,0x36,0x0,0x9,0x9,0x65,0x6e,0x9,0x0,0x6a,0x9,0x1,0x0,0x9,0x1,0x0,0x25,
+0x8,0x42,0x54,0x5f,0x53,0x65,0x6e,0x73,0x65};
+
 static btstack_packet_callback_registration_t hci_event_callback_registration;
 
 
@@ -115,25 +123,29 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
 	// 0x0100 "ServiceName"
 	de_add_number(service, DE_UINT, DE_SIZE_16, 0x0100);
 	de_add_data(service, DE_STRING, strlen(name), (uint8_t *) name);
+    // for (int i = 0; i < 91; i++){
+    //     printf("0x%0x,",spp_service_buffer[i]);
+    // }
 }
 
 
 
 static void service_setup(int rfcomm_channel){
     // register for HCI events
-    spp_service_buffer = (uint8_t*) malloc(sizeof(uint8_t)*114);
+    // spp_service_buffer = (uint8_t*) malloc(sizeof(uint8_t)*91);
     hci_event_callback_registration.callback = &packet_handler;
     hci_add_event_handler(&hci_event_callback_registration);
 
     l2cap_init();
-
+  
     rfcomm_init();
     rfcomm_register_service(packet_handler, rfcomm_channel, 0xffff);  // reserved channel, mtu limited by l2cap
 
     // init SDP, create record for SPP and register with SDP
     sdp_init();
-    memset(spp_service_buffer, 0, 91);
-    create_custom_sdp_record(spp_service_buffer, 0x10001, rfcomm_channel, "BT_Sense");
+    // memset(spp_service_buffer, 0, 91);
+    // create_custom_sdp_record(spp_service_buffer, 0x10001, rfcomm_channel, "BT_Sense");
+
    // printf("Before dump: %u\n\r", de_get_len((uint8_t*)spp_service_buffer));
     //de_dump_data_element((uint8_t*)spp_service_buffer);
     //printf("After dump: %u\n\r", de_get_len((uint8_t*)spp_service_buffer));

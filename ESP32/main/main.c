@@ -21,10 +21,8 @@
 
 #include "bt.h"
 #include <btstack.h>
-#include "adc.h"
+#include "i2s_adc.h"
 
-#include "driver/adc.h"
-#include "esp_adc_cal.h"
 #include <time.h>
 #include <sys/time.h>
 
@@ -178,6 +176,8 @@ static void one_shot_timer_setup(void){
 }
 
 
+
+
 int btstack_main(int argc, const char * argv[]);
 int btstack_main(int argc, const char * argv[]){
     (void)argc;
@@ -192,8 +192,9 @@ int btstack_main(int argc, const char * argv[]){
     gap_ssp_set_io_capability(SSP_IO_CAPABILITY_DISPLAY_YES_NO);
     gap_set_local_name("BT amp 00:00:00:00:00:00");
 
-    adc_init();
+    // adc_init();
 
+    i2s_init();
 	//spi_init(&spi);
 	spi_init();
 	uint8_t data[3] = {0x00, 0x00, '\0'};
@@ -206,12 +207,14 @@ int btstack_main(int argc, const char * argv[]){
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK( ret );
+    xTaskCreatePinnedToCore(&i2s_adc_sample, "i2s_adc_sample", 1024 * 2, NULL, 1, NULL, 1);
 
-	// xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE*4, NULL, 5, NULL); //minimal stack size(128) is too small for blink task.
+
+	xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE*4, NULL, 5, NULL); //minimal stack size(128) is too small for blink task.
     lineBufferIndex = LINEBUFFER_BYTES;
     // turn on!
     hci_power_control(HCI_POWER_ON);
-    lineBuffer = (uint8_t*) malloc(sizeof (uint8_t) * LINEBUFFER_BYTES); // allocate space for 100 measurements
+    lineBuffer = (uint8_t*) malloc(sizeof (uint8_t) * LINEBUFFER_BYTES); // allocate space for samples
     memset(lineBuffer, 0, LINEBUFFER_BYTES);
     return 0;
 }
