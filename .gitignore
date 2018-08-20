@@ -3,3 +3,4 @@
 /ESP32_service/build/*
 __pycache__/*
 *.csv
+*.dat
