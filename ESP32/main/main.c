@@ -27,7 +27,7 @@
 #include <sys/time.h>
 
 static spi_device_handle_t spi;
-#include "spi.h"
+// #include "spi.h"
 //#include "queue.h"
 #include "static_queue.h"
 #define BLINK_GPIO 5 //esp32 thing gpio_led
@@ -192,14 +192,11 @@ int btstack_main(int argc, const char * argv[]){
     gap_ssp_set_io_capability(SSP_IO_CAPABILITY_DISPLAY_YES_NO);
     gap_set_local_name("BT amp 00:00:00:00:00:00");
 
-    // adc_init();
+    
 
-    i2s_init();
-	//spi_init(&spi);
-	spi_init();
-	uint8_t data[3] = {0x00, 0x00, '\0'};
+	// uint8_t data[3] = {0x00, 0x00, '\0'};
 	//rheo_send_data(&spi, data);
-	rheo_send_data(data);
+	// rheo_send_data(data);
     // Initialize NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES) {
@@ -207,15 +204,18 @@ int btstack_main(int argc, const char * argv[]){
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK( ret );
-    xTaskCreatePinnedToCore(&i2s_adc_sample, "i2s_adc_sample", 1024 * 2, NULL, 1, NULL, 1);
 
+	//spi_init(&spi);
+	// spi_init();
+    adc_init();
+    i2s_init();
+    xTaskCreatePinnedToCore(&i2s_adc_sample, "i2s_adc_sample", 1024 * 4, NULL, 1, NULL, 1);
 
 	xTaskCreate(&blink_task, "blink_task", configMINIMAL_STACK_SIZE*4, NULL, 5, NULL); //minimal stack size(128) is too small for blink task.
     lineBufferIndex = LINEBUFFER_BYTES;
     // turn on!
     hci_power_control(HCI_POWER_ON);
-    lineBuffer = (uint8_t*) malloc(sizeof (uint8_t) * LINEBUFFER_BYTES); // allocate space for samples
-    memset(lineBuffer, 0, LINEBUFFER_BYTES);
+    lineBuffer = (uint8_t*) calloc(sizeof (uint8_t) * LINEBUFFER_BYTES, sizeof (uint8_t)); // allocate space for samples
     return 0;
 }
 /* EXAMPLE_END */

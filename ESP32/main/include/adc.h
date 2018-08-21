@@ -12,7 +12,7 @@
 #define NO_OF_SAMPLES   64          //Multisampling
 
 static esp_adc_cal_characteristics_t *adc_chars;
-static const adc1_channel_t channel = ADC1_GPIO32_CHANNEL;     //GPIO34 if ADC1, GPIO14 if ADC2
+static const adc1_channel_t channel = ADC1_GPIO36_CHANNEL;     //GPIO34 if ADC1, GPIO14 if ADC2
 static const adc_atten_t atten = ADC_ATTEN_DB_11; //11dB attenuation to get 0-3.3V full scale 
 static const adc_unit_t unit = ADC_UNIT_1;
 
