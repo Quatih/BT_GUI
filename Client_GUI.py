@@ -5,6 +5,7 @@ import threading
 import select
 import atexit
 import pickle
+import PyQt5.QtBluetooth
 
 from BTServer import *
 from TimerThread import *
@@ -17,6 +18,9 @@ class Client_GUI(wx.Frame):
     server = None
     matches = None
     output_file = None
+    sendThread = None
+    recThread = None
+    countThread = None
     fileAccess = False
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(300,150))
@@ -24,7 +28,6 @@ class Client_GUI(wx.Frame):
         mainSizer = wx.BoxSizer(wx.VERTICAL)
         panel = wx.Panel(self) 
         box = wx.BoxSizer(wx.HORIZONTAL) 
-
         self.text = wx.TextCtrl(panel,style = wx.TE_MULTILINE) 
             
         self.device_names = []   
@@ -70,8 +73,7 @@ class Client_GUI(wx.Frame):
         try:
             fh = open(filename, "rb")
         except:
-            print ("Error: can\'t find file")
-            self.server= BTServer()
+            print ("Error: can\'t open file")
             thread = threading.Thread(target=self.BTScan)
             thread.daemon = True
             thread.start()
@@ -253,8 +255,12 @@ class Client_GUI(wx.Frame):
         exit()
 
     def exit(self):
-        self.sendThread.terminate()
-        self.recThread.terminate()
+        if not self.sendThread is None:
+            self.sendThread.terminate()
+        if not self.recThread is None:
+            self.recThread.terminate()
+        if not self.countThread is None:
+            self.countThread.terminate()
 
         if not self.output_file is None:
             while(self.fileAccess):
