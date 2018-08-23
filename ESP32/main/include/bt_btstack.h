@@ -8,17 +8,15 @@
 #include <string.h>
 #include <math.h>
 #include "btstack.h"
-#include "adc.h"
 
 // for transmission
 
 uint8_t * lineBuffer;
 uint32_t lineBufferIndex;
 
-static uint8_t SERVICE_UUID [] = {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99, 
-                                  0x82, 0xec, 0x28, 0x68, 0x26, 0x2b, 0xd4, 0xe4};
-                                 //{0x00, 0x00, 0x11, 0x01, 0x00, 0x00, 0x10, 0x00,
-                                 // 0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB};
+#define SERVICE_UUID {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99, \
+                      0x82, 0xec, 0x28, 0x68, 0x26, 0x2b, 0xd4, 0xe4}
+
 static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
 
 uint16_t rfcomm_channel_id;
@@ -51,7 +49,7 @@ static btstack_packet_callback_registration_t hci_event_callback_registration;
  * The SDP record is created on the fly in RAM and is deterministic.
  * To preserve valuable RAM, the result could be stored as constant data inside the ROM.   
  */
-
+/*
 void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, int rfcomm_channel, const char *name){
 	
 	uint8_t* attribute;
@@ -66,7 +64,7 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
     
     attribute = de_push_sequence(service);
     {
-        de_add_uuid128(attribute, &SERVICE_UUID[0]);
+        de_add_uuid128(attribute, SERVICE_UUID);
         //de_add_number(attribute,  DE_UUID, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_SERIAL_PORT );
     }
     de_pop_sequence(service, attribute);
@@ -130,10 +128,10 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
     //     printf("0x%0x,",spp_service_buffer[i]);
     // }
 }
+*/
 
 
-
-static void service_setup(int rfcomm_channel){
+static void bt_service_setup(int rfcomm_channel){
     // register for HCI events
     spp_service_buffer = (uint8_t*) malloc(sizeof(uint8_t)*SPP_SERVICE_BUFFER_LEN);
     uint8_t buff[] = SPP_SERVICE_BUFFER_VALUES;
