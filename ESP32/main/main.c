@@ -30,7 +30,7 @@ static spi_device_handle_t spi;
 //#include "queue.h"
 #include "static_queue.h"
 #define BLINK_GPIO 5 //esp32 thing gpio_led
-#define LINEBUFFER_BYTES 512
+#define LINEBUFFER_BYTES 512+8 // 8 extra for timestamp
 #define TRANSMISSION_PERIOD_MS 1
 
 Static_Queue * ADCqueue;
@@ -52,106 +52,6 @@ uint32_t get_usecs() {
     gettimeofday(&tv, NULL);
     uint32_t ret = (uint32_t) (tv.tv_sec * 1000000LL + (tv.tv_usec));
     return ret;
-}
-
-int insert_int_in_buffer(uint8_t * buffer, uint32_t insert){
-    // buffer[0] = insert & 0xff;
-    // buffer[1] = (insert >> 8)  & 0xff;
-    // buffer[2] = (insert >> 16) & 0xff;
-    // buffer[3] = (insert >> 24) & 0xff;
-
-    buffer[3] = insert & 0xff;
-    buffer[2] = (insert >> 8)  & 0xff;
-    buffer[1] = (insert >> 16) & 0xff;
-    buffer[0] = (insert >> 24) & 0xff;
-    
-    return 4;
-    // printf("[%x, %x, %x, %x], %u ", buffer[0], buffer[1], buffer[2], buffer[3], insert);
-}
-
-int put_measurements(uint8_t* buffer, int index){
-            //for (int i = 0; i< ADCqueue->size; i++){
-        ///    printf("%d, ", ADCqueue->queue[i]);
-        //}
-        uint8_t * start = buffer;
-        val_tuple deq;
-        int i = 0;
-        int indexStart = index;
-        
-        // while (!queueIsEmpty(ADCqueue) || i < 4) {
-        //     i++;
-        //     deq = dequeue(ADCqueue);
-        //     length += sprintf(lineBuffer + length, "%d;", deq.data);
-        // }
-        // unsigned char data[sizeof(QueueType)+1];
-        // unsigned char time[sizeof(QueueTime)+1];
-        
-        
-        while (!queueIsEmpty(ADCqueue) || index < (LINEBUFFER_BYTES - 8)) {
-            i++;
-            deq = dequeue(ADCqueue);
-            index += insert_int_in_buffer(lineBuffer + index, deq.data);
-            index += insert_int_in_buffer(lineBuffer + index, deq.time);
-            // length += sprintf(lineBuffer+ length, "%s", &data[0]);
-            // length += sprintf(lineBuffer+ length, "%s", &time[0]);
-            // printf("%s%s\n", data, time);
-        }
-        // printf("len %d, i: %d \n", lineBufferIndex, i*8 );
-        buffer[0] = '\0';
-        i = 0;
-        // while(start[i]!= '\0'){
-        // while(i < index - indexStart){
-        //     printf("%02x", start[i++]);
-        // }
-        return index;
-        // sprintf(ref, "%s", temp);
-}
-
-
-void blink_task(void *pvParameter)
-{
-    /* Configure the IOMUX register for pad BLINK_GPIO (some pads are
-       muxed to GPIO on reset already, but some default to other
-       functions and need to be switched to GPIO. Consult the
-       Technical Reference for a list of pads and their default
-       functions.)
-    */
-    gpio_pad_select_gpio(BLINK_GPIO);
-    /* Set the GPIO as a push/pull output */
-    gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
-
-    uint8_t data[3] = {0x00, 0x00, '\0'};
-    printf("port, %d\n", portTICK_PERIOD_MS);
-    while(1) {
-        /* Blink off (output low) */
-        // gpio_set_level(BLINK_GPIO, 0);
-        // vTaskDelay(50 / portTICK_PERIOD_MS);
-        // /* Blink on (output hivalbuffergh) */
-        // gpio_set_level(BLINK_GPIO, 1);
-         vTaskDelay(1 / portTICK_PERIOD_MS);
-
-		//printf("blink_task is running\n");
-		//printf("adc reading: %d\n", adc_read());
-        //sprintf(valbuffer, "%d\n;", adc_read());
-        dacount += 1;
-        enqueue(ADCqueue, (val_tuple) {dacount, get_msecs()});
-        if (dacount == 15){
-            // lineBufferIndex = sprintf(lineBuffer, "Blaa:");
-            // put_measurements(lineBuffer + lineBufferIndex);
-            dacount = 0;
-            // printf("%s\n", lineBuffer);
-        }
-        // if(ADCqueue->size == MAX_SIZE-1){
-        //     while(!queueIsEmpty(ADCqueue)) {
-        //         printf("%u, ", dequeue(ADCqueue));
-        //     }
-        //     printf("\nIndex: %d\n", ADCqueue->size);
-        // }
-		// data[1]++;
-		// if(data[1] == 0x8F)
-		// 	data[1] = 0;
-		// rheo_send_data(data);
-    }
 }
 
 /* @section Periodic Timer Setup
@@ -208,6 +108,18 @@ static void bt_transmit(){
     }
 }
 
+// puts the usec timestamp of the last sample
+void put_time(uint8_t * buffer, uint64_t t){
+    buffer[0] = (t >> 56) & 0xff;
+    buffer[1] = (t >> 48) & 0xff;
+    buffer[2] = (t >> 40) & 0xff;  
+    buffer[3] = (t >> 32) & 0xff;
+    buffer[4] = (t >> 24) & 0xff;
+    buffer[5] = (t >> 16) & 0xff;
+    buffer[6] = (t >> 8) & 0xff;
+    buffer[7] = t & 0xff;
+}
+
 void i2s_adc_sample()
 {
     #ifdef WRITE_FLASH
@@ -237,7 +149,16 @@ void i2s_adc_sample()
     uint32_t usecs1, usecs2;
     while(1){
     // while (flash_wr_size < FLASH_RECORD_SIZE) {
-        //read data from I2S bus, in this case, from ADC.
+        //read data from I2S bus
+        i2s_read(I2S_NUM, (void*) i2s_read_buff, 2*I2S_BUF_LEN, &bytes_read, portMAX_DELAY);
+        // disp_buf((uint8_t*) i2s_read_buff, bytes_read);
+        memcpy(lineBuffer+8, i2s_read_buff, bytes_read);
+        put_time(lineBuffer, get_usecs());
+        // buff_ready = true;
+        if(rfcomm_channel_id)
+            rfcomm_request_can_send_now_event(rfcomm_channel_id);
+
+        #ifdef WRITE_FLASH
         
         usecs1 = get_usecs();
         
@@ -245,13 +166,6 @@ void i2s_adc_sample()
         usecs2 = get_usecs();
         ets_printf("At %u, Bytes read: %u After: %u usecs\n", usecs1, bytes_read, usecs2 - usecs1);
         // buff_ready = false;
-        // disp_buf((uint8_t*) i2s_read_buff, bytes_read);
-        memcpy(lineBuffer, i2s_read_buff, bytes_read);
-        // buff_ready = true;
-        if(rfcomm_channel_id)
-            rfcomm_request_can_send_now_event(rfcomm_channel_id);
-
-        #ifdef WRITE_FLASH
         //save original data from I2S(ADC) into flash.
         esp_partition_write(data_partition, flash_wr_size, i2s_read_buff, i2s_read_len);
         flash_wr_size += i2s_read_len;

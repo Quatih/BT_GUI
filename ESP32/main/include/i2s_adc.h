@@ -17,12 +17,12 @@
 // #define WRITE_FLASH
 //i2s number
 #define I2S_NUM (0)
-
 //i2s Sample rate
 #define I2S_SAMPLE_RATE (20150)
 
 //i2s data bits
 #define I2S_SAMPLE_BITS (16)
+#define I2S_DAC_CHANNEL DAC1_CHANNEL_1 // GPIO_36, SVP pin
 
 //I2S read buffer length [bytes]
 #define I2S_BUF_LEN (256)
@@ -51,9 +51,8 @@
  */
 void i2s_init()
 {
-    int i2s_num = I2S_NUM;
     i2s_config_t i2s_config = {
-        .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN | I2S_MODE_ADC_BUILT_IN,
+        .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
         .sample_rate =  I2S_SAMPLE_RATE/2,
         .bits_per_sample = I2S_SAMPLE_BITS,
         .communication_format = I2S_COMM_FORMAT_I2S_MSB,
@@ -63,10 +62,11 @@ void i2s_init()
         .dma_buf_len = I2S_BUF_LEN,
         .use_apll = false
     };
+
     //install and start i2s driver
-    i2s_driver_install(i2s_num, &i2s_config, 0, NULL);
+    i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
 	//init DAC pad
-    i2s_set_dac_mode(I2S_DAC_CHANNEL_RIGHT_EN); // GPIO25
+    i2s_set_dac_mode(I2S_DAC_CHANNEL_RIGHT_EN);
     //init ADC pad
     i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
 }
@@ -103,25 +103,3 @@ void disp_buf(uint8_t* buf, int length)
     }
     printf("======\n");
 }
-
-
-// void i2c_dac_play_test(){
-//     int i2s_read_len = I2S_BUF_LEN;
-//     size_t bytes_read;
-//     // uint8_t* i2s_write_buff = (uint8_t*) calloc(i2s_read_len, sizeof(char));
-//     //4. Play an example audio file(file format: 8bit/16khz/single channel)
-//     printf("Playing file example: \n");
-//     int offset = 0;
-//     uint8_t val_write;
-//     // int tot_size = sizeof(audio_table);
-//     // while (offset < tot_size) {
-//     while (offset < tot_size) {
-//         // int play_len = ((tot_size - offset) > (4 * 1024)) ? (4 * 1024) : (tot_size - offset);
-//         // int i2s_wr_len = i2s_dac_data_scale(i2s_write_buff, (uint8_t*)(audio_table + offset), play_len);
-        
-//         i2s_write(I2S_NUM, i2s_write_buff, i2s_wr_len, &bytes_written, portMAX_DELAY);
-//         // offset += play_len;
-//         // example_disp_buf((uint8_t*) i2s_write_buff, 32);
-//         vTaskDelay(100 / portTICK_PERIOD_MS);
-//     }
-// }

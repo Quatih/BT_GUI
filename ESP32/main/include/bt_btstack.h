@@ -14,19 +14,13 @@
 uint8_t * lineBuffer;
 uint32_t lineBufferIndex;
 
-#define SERVICE_UUID {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99, \
-                      0x82, 0xec, 0x28, 0x68, 0x26, 0x2b, 0xd4, 0xe4}
+#define SERVICE_UUID {0x0f, 0xd5, 0xca, 0x36, 0x4e, 0x7d, 0x4f, 0x99, 0x82, 0xec, 0x28, 0x68, 0x26, 0x2b, 0xd4, 0xe4}
 
 static void packet_handler (uint8_t packet_type, uint16_t channel, uint8_t *packet, uint16_t size);
 
 uint16_t rfcomm_channel_id;
 
 // Output from create_custom_sdp_record, intended to reduce RAM footprint
-
-#define SPP_SERVICE_BUFFER_VALUES {0x36,0x0,0x58,0x9,0x0,0x0,0xa,0x0,0x1,0x0,0x1,0x9,0x0,0x1,0x36,0x0,0x11,\
-0x1c,0xf,0xd5,0xca,0x36,0x4e,0x7d,0x4f,0x99,0x82,0xec,0x28,0x68,0x26,0x2b,0xd4,0xe4,0x9,0x0,0x4,0x36,0x0,0xe,\
-0x36,0x0,0x3,0x19,0x1,0x0,0x36,0x0,0x5,0x19,0x0,0x3,0x8,0x11,0x9,0x0,0x5,0x36,0x0,0x3,0x19,0x10,0x2,0x9,0x0,\
-0x6,0x36,0x0,0x9,0x9,0x65,0x6e,0x9,0x0,0x6a,0x9,0x1,0x0,0x9,0x1,0x0,0x25,0x8,0x42,0x54,0x5f,0x53,0x65,0x6e,0x73,0x65}
 
 #define SPP_SERVICE_BUFFER_LEN 91
 
@@ -49,7 +43,7 @@ static btstack_packet_callback_registration_t hci_event_callback_registration;
  * The SDP record is created on the fly in RAM and is deterministic.
  * To preserve valuable RAM, the result could be stored as constant data inside the ROM.   
  */
-/*
+
 void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, int rfcomm_channel, const char *name){
 	
 	uint8_t* attribute;
@@ -61,10 +55,10 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
     
 	// 0x0001 "Service Class ID List"
 	de_add_number(service,  DE_UINT, DE_SIZE_16, BLUETOOTH_ATTRIBUTE_SERVICE_CLASS_ID_LIST);
-    
+    uint8_t buff[] = SERVICE_UUID;
     attribute = de_push_sequence(service);
     {
-        de_add_uuid128(attribute, SERVICE_UUID);
+        de_add_uuid128(attribute, buff);
         //de_add_number(attribute,  DE_UUID, DE_SIZE_16, BLUETOOTH_SERVICE_CLASS_SERIAL_PORT );
     }
     de_pop_sequence(service, attribute);
@@ -128,14 +122,10 @@ void create_custom_sdp_record(uint8_t *service, uint32_t service_record_handle, 
     //     printf("0x%0x,",spp_service_buffer[i]);
     // }
 }
-*/
-
 
 static void bt_service_setup(int rfcomm_channel){
     // register for HCI events
     spp_service_buffer = (uint8_t*) malloc(sizeof(uint8_t)*SPP_SERVICE_BUFFER_LEN);
-    uint8_t buff[] = SPP_SERVICE_BUFFER_VALUES;
-    memcpy(spp_service_buffer, buff, SPP_SERVICE_BUFFER_LEN);
 
     hci_event_callback_registration.callback = &packet_handler;
     hci_add_event_handler(&hci_event_callback_registration);
@@ -147,8 +137,7 @@ static void bt_service_setup(int rfcomm_channel){
 
     // init SDP, create record for SPP and register with SDP
     sdp_init();
-    // memset(spp_service_buffer, 0, 91);
-    // create_custom_sdp_record(spp_service_buffer, 0x10001, rfcomm_channel, "BT_Sense");
+    create_custom_sdp_record(spp_service_buffer, 0x10001, rfcomm_channel, "BT_Sense");
 
    // printf("Before dump: %u\n\r", de_get_len((uint8_t*)spp_service_buffer));
     //de_dump_data_element((uint8_t*)spp_service_buffer);
