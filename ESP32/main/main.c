@@ -150,21 +150,23 @@ void i2s_adc_sample()
     while(1){
     // while (flash_wr_size < FLASH_RECORD_SIZE) {
         //read data from I2S bus
+        usecs1 = get_usecs();
+        
         i2s_read(I2S_NUM, (void*) i2s_read_buff, 2*I2S_BUF_LEN, &bytes_read, portMAX_DELAY);
-        // disp_buf((uint8_t*) i2s_read_buff, bytes_read);
+        usecs2 = get_usecs();
+        ets_printf("At %u, Bytes read: %u After: %u usecs\n", usecs1, bytes_read, usecs2 - usecs1);
+
+        disp_buf((uint8_t*) i2s_read_buff, bytes_read);
         memcpy(lineBuffer+8, i2s_read_buff, bytes_read);
         put_time(lineBuffer, get_usecs());
         // buff_ready = true;
         if(rfcomm_channel_id)
             rfcomm_request_can_send_now_event(rfcomm_channel_id);
 
+
+
         #ifdef WRITE_FLASH
         
-        usecs1 = get_usecs();
-        
-        i2s_read(I2S_NUM, (void*) i2s_read_buff, 2*I2S_BUF_LEN, &bytes_read, portMAX_DELAY);
-        usecs2 = get_usecs();
-        ets_printf("At %u, Bytes read: %u After: %u usecs\n", usecs1, bytes_read, usecs2 - usecs1);
         // buff_ready = false;
         //save original data from I2S(ADC) into flash.
         esp_partition_write(data_partition, flash_wr_size, i2s_read_buff, i2s_read_len);
@@ -218,8 +220,7 @@ int btstack_main(int argc, const char * argv[]){
     adc_init();
     i2s_init();
 
-    lineBuffer = (uint8_t*) calloc(sizeof (uint8_t) * LINEBUFFER_BYTES, sizeof (uint8_t)); // allocate space for samples
-    // xTaskCreatePinnedToCore(&bt_transmit, "bt_transmit", configMINIMAL_STACK_SIZE, NULL, 5, NULL, 0);
+    lineBuffer = (uint8_t*) calloc(LINEBUFFER_BYTES, sizeof (uint8_t)); // allocate space for samples
 
     xTaskCreatePinnedToCore(&i2s_adc_sample, "i2s_adc_sample", 1024 * 4, NULL, 1, NULL, 1);
 

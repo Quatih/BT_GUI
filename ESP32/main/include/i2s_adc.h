@@ -18,7 +18,7 @@
 //i2s number
 #define I2S_NUM (0)
 //i2s Sample rate
-#define I2S_SAMPLE_RATE (20150)
+#define I2S_SAMPLE_RATE (20480)
 
 //i2s data bits
 #define I2S_SAMPLE_BITS (16)
@@ -45,14 +45,13 @@
 #define FLASH_ADDR (0x200000)
 #endif
 
-
 /**
- * @brief I2S ADC/DAC mode init.
+ * @brief I2S ADC mode init.
  */
 void i2s_init()
 {
-    i2s_config_t i2s_config = {
-        .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
+    i2s_config_t i2s_config_adc = {
+        .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN,
         .sample_rate =  I2S_SAMPLE_RATE/2,
         .bits_per_sample = I2S_SAMPLE_BITS,
         .communication_format = I2S_COMM_FORMAT_I2S_MSB,
@@ -64,9 +63,7 @@ void i2s_init()
     };
 
     //install and start i2s driver
-    i2s_driver_install(I2S_NUM, &i2s_config, 0, NULL);
-	//init DAC pad
-    i2s_set_dac_mode(I2S_DAC_CHANNEL_RIGHT_EN);
+    i2s_driver_install(I2S_NUM, &i2s_config_adc, 0, NULL);
     //init ADC pad
     i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
 }
