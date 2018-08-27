@@ -52,7 +52,7 @@ void i2s_init()
 {
     i2s_config_t i2s_config_adc = {
         .mode = I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_ADC_BUILT_IN,
-        .sample_rate =  I2S_SAMPLE_RATE/2,
+        .sample_rate =  I2S_SAMPLE_RATE,
         .bits_per_sample = I2S_SAMPLE_BITS,
         .communication_format = I2S_COMM_FORMAT_I2S_MSB,
         .channel_format = I2S_FORMAT,

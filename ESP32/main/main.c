@@ -30,7 +30,7 @@ static spi_device_handle_t spi;
 //#include "queue.h"
 #include "static_queue.h"
 #define BLINK_GPIO 5 //esp32 thing gpio_led
-#define LINEBUFFER_BYTES 512+8 // 8 extra for timestamp
+#define LINEBUFFER_BYTES 2*I2S_BUF_LEN+8 // 8 extra for timestamp
 #define TRANSMISSION_PERIOD_MS 1
 
 Static_Queue * ADCqueue;
@@ -47,65 +47,10 @@ uint32_t get_msecs() {
     return ret;
 }
 
-uint32_t get_usecs() {
+uint64_t get_usecs() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    uint32_t ret = (uint32_t) (tv.tv_sec * 1000000LL + (tv.tv_usec));
-    return ret;
-}
-
-/* @section Periodic Timer Setup
- * 
- * @text The heartbeat handler increases the real counter every second, 
- * and sends a text string with the counter value, as shown in Listing PeriodicCounter. 
- */
-
-// static btstack_timer_source_t transmission_timer;
-
-// static void bt_transmission_handler(struct btstack_timer_source *ts){
-//     // static int counter = 0;
-
-//     if (rfcomm_channel_id){
-//         // lineBufferIndex = sprintf(lineBuffer, "%04u:", ++counter);
-//         // printf("line: %02x, buffer: %02x, len: %d \n",&lineBuffer[0], &lineBuffer[lineBufferIndex], lineBufferIndex );
-//         // lineBufferIndex = put_measurements(lineBuffer, 0);
-
-//         // Wait until semaphore is available
-//         while(uxSemaphoreGetCount buff_Semaphore) == 0){
-//         }
-//         rfcomm_request_can_send_now_event(rfcomm_channel_id);
-//     }
-
-//     btstack_run_loop_set_timer(ts, TRANSMISSION_PERIOD_MS);
-//     btstack_run_loop_add_timer(ts);
-// } 
-
-// static void one_shot_timer_setup(void){
-//     // set one-shot timer
-//     transmission_timer.process = &bt_transmission_handler;
-//     btstack_run_loop_set_timer(&transmission_timer, TRANSMISSION_PERIOD_MS);
-//     btstack_run_loop_add_timer(&transmission_timer);
-// }
-
-static void bt_transmit(){
-    while(1){
-
-        if (rfcomm_channel_id){
-            // lineBufferIndex = sprintf(lineBuffer, "%04u:", ++counter);
-            // printf("line: %02x, buffer: %02x, len: %d \n",&lineBuffer[0], &lineBuffer[lineBufferIndex], lineBufferIndex );
-            // lineBufferIndex = put_measurements(lineBuffer, 0);
-
-            // Wait until semaphore is available
-            while(1) { 
-                if(buff_ready == true){
-                    break;
-                }
-                vTaskDelay(1);
-            }
-            rfcomm_request_can_send_now_event(rfcomm_channel_id);
-        }
-        vTaskDelay(19);
-    }
+    return (tv.tv_sec * 1000000LL + (tv.tv_usec));
 }
 
 // puts the usec timestamp of the last sample
@@ -118,6 +63,11 @@ void put_time(uint8_t * buffer, uint64_t t){
     buffer[5] = (t >> 16) & 0xff;
     buffer[6] = (t >> 8) & 0xff;
     buffer[7] = t & 0xff;
+
+    // for (int i = 0; i<8; i++){
+    //     printf("%02x", buffer[i]);
+    // }
+    // printf("\n");
 }
 
 void i2s_adc_sample()
@@ -139,12 +89,12 @@ void i2s_adc_sample()
     int flash_wr_size = 0;
     #endif
 
-    int i2s_read_len = I2S_BUF_LEN;
+    int i2s_read_len = 2*I2S_BUF_LEN;
 
     size_t bytes_read;
     
     //2. Record audio from ADC and save in flash
-    uint8_t* i2s_read_buff = (uint8_t*) calloc(2*i2s_read_len, sizeof(uint8_t));
+    uint8_t* i2s_read_buff = (uint8_t*) calloc(i2s_read_len, sizeof(uint8_t));
     i2s_adc_enable(I2S_NUM);
     uint32_t usecs1, usecs2;
     while(1){
@@ -152,18 +102,16 @@ void i2s_adc_sample()
         //read data from I2S bus
         usecs1 = get_usecs();
         
-        i2s_read(I2S_NUM, (void*) i2s_read_buff, 2*I2S_BUF_LEN, &bytes_read, portMAX_DELAY);
+        i2s_read(I2S_NUM, (void*) i2s_read_buff, i2s_read_len, &bytes_read, portMAX_DELAY);
         usecs2 = get_usecs();
-        ets_printf("At %u, Bytes read: %u After: %u usecs\n", usecs1, bytes_read, usecs2 - usecs1);
+        ets_printf("At %u, samples read: %u After: %u usecs\n", usecs2, bytes_read/2, usecs2 - usecs1);
 
-        disp_buf((uint8_t*) i2s_read_buff, bytes_read);
+        // disp_buf((uint8_t*) i2s_read_buff, bytes_read);
         memcpy(lineBuffer+8, i2s_read_buff, bytes_read);
-        put_time(lineBuffer, get_usecs());
+        put_time(lineBuffer, usecs2);
         // buff_ready = true;
         if(rfcomm_channel_id)
             rfcomm_request_can_send_now_event(rfcomm_channel_id);
-
-
 
         #ifdef WRITE_FLASH
         
@@ -174,9 +122,7 @@ void i2s_adc_sample()
         ets_printf("Sound recording %u%%\n", flash_wr_size * 100 / FLASH_RECORD_SIZE);
         #endif
         
-        // vTaskDelay(1);
-        // usecs1 = get_usecs();
-        // ets_printf("usecs: %u\n", usecs1-usecs2);
+        vTaskDelay(10);
     }
     i2s_adc_disable(I2S_NUM);
     free(i2s_read_buff);
