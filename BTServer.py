@@ -45,7 +45,7 @@ class BTServer:
         except: 
             print("Receive failed")
             self.close()
-            return None
+            return []
 
     def send(self, data):
         try:

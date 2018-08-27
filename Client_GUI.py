@@ -197,21 +197,21 @@ class Client_GUI(wx.Frame):
             length = len(data) 
             print("Receive bytes:", length)
             # if the data returned includes multiple sequences, go over each one
-            for a in range(1, int(length / packet_length), 1):
+            for packet_num in range(1, int(length / packet_length), 1):
                 # get 64 bytes of unsigned usecs at the start
-                time = [data[i+(packet_length*(a-1))] for i in range(0,7,1)]
+                time = [data[i+(packet_length*(packet_num-1))] for i in range(0,7,1)]
                 time = long.from_bytes(time, byteorder = 'big', signed = False) 
                 usec_step = 1e6/sampling_rate 
-                for i in range(a*packet_length, 9 + (a-1)*packet_length, -2):
+                for i in range(packet_num*packet_length, 9 + (packet_num-1)*packet_length, -2):
                     item = [data[i-1], data[i]]
                     # substract from 4096 because the data is inverted
                     num = 4096 - int.from_bytes(item, byteorder='big', signed=False)
                     try:
                         self.output_file.write("%u;%u\n" %(num, time))
                     except Exception as err: 
-                        print("Failed to write to file:", err)
-                    time = time - usec_step
+                        print("Failed to write to file:", err)  
                     print(num, time/(1e6)) 
+                    time = time - usec_step
             self.fileAccess = False
         else:
             if not self.output_file is None:
