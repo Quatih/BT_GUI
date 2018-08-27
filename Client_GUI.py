@@ -10,9 +10,17 @@ import PyQt5.QtBluetooth
 from BTServer import *
 from TimerThread import *
 filename = "BT_GUI.dat"
-outputfile = "output.csv"
+outputfilename = "output.csv"
 sampling_rate = 20480
 packet_length = 520
+def increment_filename(fn):
+    name, extension = os.path.splitext(fn)
+    num = 1
+    while(os.path.isfile(fn)):
+        fn = name + '{0}'.format(num) + extension
+        num = num + 1 
+    return fn
+
 class Client_GUI(wx.Frame):
     device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
     device_selected = 0
@@ -110,6 +118,8 @@ class Client_GUI(wx.Frame):
         self.text.AppendText( "Current selection: "+e.GetEventObject().GetStringSelection()+ " index: %d\n" %(self.device_selected))
         
 
+
+
     def OnOpen(self,e):
         """ Open a file"""
         self.dirname = ''
@@ -156,6 +166,7 @@ class Client_GUI(wx.Frame):
                 print("No server connected")
         else:
             print("No server connected")
+
     def OpenSocket(self):
         if not self.matches:
             pass
@@ -167,12 +178,14 @@ class Client_GUI(wx.Frame):
                 print("Failed to connect: ", err )
                 self.server.connected = False
             else:
-                self.output_file = open(outputfile, "a+")
+                self.outputfilename = increment_filename(outputfilename)
+                self.output_file = open(self.outputfilename, "a+")
+                self.output_file.write("Voltage [mV];Time [µsec]\n")
                 self.sendThread = TimerThread(1, 0.25, self.SendPacket)
                 self.sendThread.daemon = True
                 self.sendThread.start()
                 self.sendThread.start_timer()
-                self.recThread = TimerThread(0.0001, 0.000025, self.ReceivePacket)
+                self.recThread = TimerThread(0.00001, 0.0000025, self.ReceivePacket)
                 self.recThread.daemon = True
                 self.recThread.start()
                 self.recThread.start_timer()
@@ -196,22 +209,25 @@ class Client_GUI(wx.Frame):
             # print(data)
             length = len(data) 
             print("Receive bytes:", length)
+            added = []
             # if the data returned includes multiple sequences, go over each one
-            for packet_num in range(1, int(length / packet_length), 1):
+            for packet_num in range(int(length / packet_length) -1, 0, -1):
                 # get 64 bytes of unsigned usecs at the start
-                time = [data[i+(packet_length*(packet_num-1))] for i in range(0,7,1)]
-                time = long.from_bytes(time, byteorder = 'big', signed = False) 
+                
                 usec_step = 1e6/sampling_rate 
-                for i in range(packet_num*packet_length, 9 + (packet_num-1)*packet_length, -2):
-                    item = [data[i-1], data[i]]
+                time = [data[i+(packet_length*(packet_num))] for i in range(0,8,1)]
+                
+                time = int.from_bytes(time, byteorder = 'big', signed = False) - usec_step*(packet_length-8)
+                for i in range(packet_length - 1 + (packet_num)*packet_length, 9 + (packet_num)*packet_length, -2):
+                    item = [data[i], data[i-1]]
                     # substract from 4096 because the data is inverted
-                    num = 4096 - int.from_bytes(item, byteorder='big', signed=False)
+                    num = 4095 - int.from_bytes(item, byteorder='big', signed=False)
                     try:
-                        self.output_file.write("%u;%u\n" %(num, time))
+                        self.output_file.write("%f;%f\n" %(num*3300/4095, time/1e6))
                     except Exception as err: 
                         print("Failed to write to file:", err)  
-                    print(num, time/(1e6)) 
-                    time = time - usec_step
+                    # print(num, time/(1e6)) 
+                    time = time + usec_step
             self.fileAccess = False
         else:
             if not self.output_file is None:
