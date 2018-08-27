@@ -5,7 +5,6 @@ import threading
 import select
 import atexit
 import pickle
-import PyQt5.QtBluetooth
 
 from BTServer import *
 from TimerThread import *
@@ -29,8 +28,8 @@ class Client_GUI(wx.Frame):
     output_file = None
     sendThread = None
     recThread = None
-    countThread = None
     fileAccess = False
+    packet_set = set()
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(300,150))
         #self.control = wx.TextCtrl(self, style=wx.TE_MULTILINE)
@@ -159,8 +158,9 @@ class Client_GUI(wx.Frame):
             if self.server.connected:
                 self.sendThread.stop_timer()
                 self.recThread.stop_timer()
-                self.countThread.stop_timer()
                 print("Closed connection to %s" %self.server.name)
+                if self.output_file is not None:
+                    self.output_file.close()
                 self.exit()
             else:
                 print("No server connected")
@@ -189,10 +189,6 @@ class Client_GUI(wx.Frame):
                 self.recThread.daemon = True
                 self.recThread.start()
                 self.recThread.start_timer()
-                self.countThread = TimerThread(1, 0.25, self.countPackets)
-                self.countThread.daemon = True
-                self.countThread.start()
-                self.countThread.start_timer()
 
     def countPackets(self):
         print("total packets", self.server.packets)
@@ -203,31 +199,35 @@ class Client_GUI(wx.Frame):
         self.server.send("Test packet!")
 
     def ReceivePacket(self):
-        data = self.server.receive()
+        data = self.server.receive(packet_length*10)
         if (data is not None):
             self.fileAccess = True
             # print(data)
             length = len(data) 
             print("Receive bytes:", length)
+            usec_step = 1e6/sampling_rate 
             added = []
             # if the data returned includes multiple sequences, go over each one
-            for packet_num in range(int(length / packet_length) -1, 0, -1):
+            for packet_num in range(0, int(length / packet_length), 1):
                 # get 64 bytes of unsigned usecs at the start
                 
-                usec_step = 1e6/sampling_rate 
                 time = [data[i+(packet_length*(packet_num))] for i in range(0,8,1)]
                 
-                time = int.from_bytes(time, byteorder = 'big', signed = False) - usec_step*(packet_length-8)
-                for i in range(packet_length - 1 + (packet_num)*packet_length, 9 + (packet_num)*packet_length, -2):
-                    item = [data[i], data[i-1]]
-                    # substract from 4096 because the data is inverted
-                    num = 4095 - int.from_bytes(item, byteorder='big', signed=False)
-                    try:
-                        self.output_file.write("%f;%f\n" %(num*3300/4095, time/1e6))
-                    except Exception as err: 
-                        print("Failed to write to file:", err)  
-                    # print(num, time/(1e6)) 
-                    time = time + usec_step
+                time = int.from_bytes(time, byteorder = 'big', signed = False) - usec_step*256
+                print(time)
+                if time not in self.packet_set:
+                    self.packet_set.add(time)
+                    # self.output_file.write("%f\n" %(time/1e6))
+                    for i in range(8 + (packet_num)*packet_length, packet_length + (packet_num)*packet_length, 2):
+                        item = [data[i+1], data[i]]
+                        # substract from 4096 because the data is inverted
+                        num = 4095 - int.from_bytes(item, byteorder='big', signed=False)
+                        try:
+                            self.output_file.write("%f;%f\n" %(num*3300/4095, time/1e6))
+                        except Exception as err: 
+                            print("Failed to write to file:", err)  
+                        # print(num, time/(1e6)) 
+                        time = time + usec_step
             self.fileAccess = False
         else:
             if not self.output_file is None:
@@ -280,8 +280,7 @@ class Client_GUI(wx.Frame):
             self.sendThread.terminate()
         if not self.recThread is None:
             self.recThread.terminate()
-        if not self.countThread is None:
-            self.countThread.terminate()
+
 
         if not self.output_file is None:
             while(self.fileAccess):

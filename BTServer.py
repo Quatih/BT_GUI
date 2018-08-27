@@ -36,9 +36,9 @@ class BTServer:
             print("No service found.")
             return []        
 
-    def receive(self):
+    def receive(self, bytes):
         try:
-            data = self.sock.recv(520)
+            data = self.sock.recv(bytes)
             self.packets = self.packets + len(data)
             # print ("received [%s]" % data)
             return data
