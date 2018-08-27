@@ -38,7 +38,7 @@ class BTServer:
 
     def receive(self):
         try:
-            data = self.sock.recv(520*10)
+            data = self.sock.recv(520)
             self.packets = self.packets + len(data)
             # print ("received [%s]" % data)
             return data

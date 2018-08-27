@@ -42,8 +42,8 @@ class TimerThread(threading.Thread):
                 except SendError:
                   self.stop_timer()
                   self.terminate()
-                except Exception as err:
-                   print("Error in callback function:", err)
+                # except Exception as err:
+                #    print("Error in callback function:", err)
                 else:
                   self.count = self.timeout/self.sleep_chunk  #reset
 
