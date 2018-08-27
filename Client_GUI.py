@@ -11,7 +11,8 @@ from BTServer import *
 from TimerThread import *
 filename = "BT_GUI.dat"
 outputfile = "output.csv"
-
+sampling_rate = 20480
+packet_length = 520
 class Client_GUI(wx.Frame):
     device_uuid = "0fd5ca36-4e7d-4f99-82ec-2868262bd4e4"
     device_selected = 0
@@ -181,7 +182,7 @@ class Client_GUI(wx.Frame):
                 self.countThread.start_timer()
 
     def countPackets(self):
-        print(self.server.packets)
+        print("total packets", self.server.packets)
         self.server.packets = 0
 
     def SendPacket(self):
@@ -189,24 +190,28 @@ class Client_GUI(wx.Frame):
         self.server.send("Test packet!")
 
     def ReceivePacket(self):
-        #threading.Timer(1, self.ReceivePacket).start()
         data = self.server.receive()
         if (data is not None):
             self.fileAccess = True
             # print(data)
-            length = len(data) # 5 starting bytes
-            print("packet length:", length)
-            for i in range(0, length - length % 8, 8):
-                item = [data[i], data[i+1], data[i+2], data[i+3]]
-                time = [data[i+4], data[i+5], data[i+6], data[i+7]]
-                num = int.from_bytes(item, byteorder='big', signed=True)
-                num2 = int.from_bytes(time, byteorder='big', signed=False)
-                try:
-                    self.output_file.write("%d;%u\n" %(num, num2))
-                except Exception as err: 
-                    print("Failed to write to file, error:", err)
-                    
-                # print(num, num2) 
+            length = len(data) 
+            print("Receive bytes:", length)
+            # if the data returned includes multiple sequences, go over each one
+            for a in range(1, int(length / packet_length), 1):
+                # get 64 bytes of unsigned usecs at the start
+                time = [data[i+(packet_length*(a-1))] for i in range(0,7,1)]
+                time = long.from_bytes(time, byteorder = 'big', signed = False) 
+                usec_step = 1e6/sampling_rate 
+                for i in range(a*packet_length, 9 + (a-1)*packet_length, -2):
+                    item = [data[i-1], data[i]]
+                    # substract from 4096 because the data is inverted
+                    num = 4096 - int.from_bytes(item, byteorder='big', signed=False)
+                    try:
+                        self.output_file.write("%u;%u\n" %(num, time))
+                    except Exception as err: 
+                        print("Failed to write to file:", err)
+                    time = time - usec_step
+                    print(num, time/(1e6)) 
             self.fileAccess = False
         else:
             if not self.output_file is None:

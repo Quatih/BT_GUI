@@ -5,7 +5,7 @@ from BTServer import *
 
 # custom thread with timer functions and a callback
 class TimerThread(threading.Thread):
-    def __init__(self, timeout=3, sleep_chunk=0.25, callback=None, *args):
+    def __init__(self, timeout=1.0, sleep_chunk=0.25, callback=None, *args):
         threading.Thread.__init__(self)
 
         self.timeout = timeout
@@ -42,11 +42,10 @@ class TimerThread(threading.Thread):
                 except SendError:
                   self.stop_timer()
                   self.terminate()
+                except Exception as err:
+                   print("Error in callback function:", err)
                 else:
                   self.count = self.timeout/self.sleep_chunk  #reset
-                #except:
-                #   print("Error in callback function")
-                
 
     def start_timer(self):
         self.start_event.set()
