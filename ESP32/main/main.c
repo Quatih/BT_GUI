@@ -122,7 +122,7 @@ void i2s_adc_sample()
         ets_printf("Sound recording %u%%\n", flash_wr_size * 100 / FLASH_RECORD_SIZE);
         #endif
         
-        vTaskDelay(10);
+        // vTaskDelay(10);
     }
     i2s_adc_disable(I2S_NUM);
     free(i2s_read_buff);
