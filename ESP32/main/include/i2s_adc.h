@@ -9,12 +9,8 @@
 #include "driver/i2s.h"
 #include "driver/adc.h"
 #include "esp_adc_cal.h"
-#include "audio_example_file.h"
 #define V_REF 1100
 
-#define PARTITION_NAME "storage"
-
-// #define WRITE_FLASH
 //i2s number
 #define I2S_NUM (0)
 //i2s Sample rate
@@ -35,19 +31,6 @@
 //I2S built-in ADC channel
 #define I2S_ADC_CHANNEL ADC1_CHANNEL_0 // GPIO_36, SVP pin
 
-#ifdef WRITE_FLASH
-//flash record size, for recording 5 seconds' data
-#define FLASH_RECORD_SIZE (I2S_CHANNEL_NUM * I2S_SAMPLE_RATE * I2S_SAMPLE_BITS / 8 * 5)
-#define FLASH_ERASE_SIZE (FLASH_RECORD_SIZE % FLASH_SECTOR_SIZE == 0) ? FLASH_RECORD_SIZE : FLASH_RECORD_SIZE + (FLASH_SECTOR_SIZE - FLASH_RECORD_SIZE % FLASH_SECTOR_SIZE)
-//sector size of flash
-#define FLASH_SECTOR_SIZE (0x1000)
-//flash read / write address
-#define FLASH_ADDR (0x200000)
-#endif
-
-/**
- * @brief I2S ADC mode init.
- */
 void i2s_init()
 {
     i2s_config_t i2s_config_adc = {
@@ -68,27 +51,7 @@ void i2s_init()
     i2s_set_adc_mode(I2S_ADC_UNIT, I2S_ADC_CHANNEL);
 }
 
-/*
- * @brief erase flash for recording
- */
-void erase_flash()
-{
-    #ifdef WRITE_FLASH
-    printf("Erasing flash \n");
-    const esp_partition_t *data_partition = NULL;
-    data_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA,
-            ESP_PARTITION_SUBTYPE_DATA_FAT, PARTITION_NAME);
-    if (data_partition != NULL) {
-        printf("partiton addr: 0x%08x; size: %d; label: %s\n", data_partition->address, data_partition->size, data_partition->label);
-    }
-    printf("Erase size: %d Bytes\n", FLASH_ERASE_SIZE);
-    ESP_ERROR_CHECK(esp_partition_erase_range(data_partition, 0, FLASH_ERASE_SIZE));
-    #endif
-}
-
-/**
- * @brief debug buffer data
- */
+// print buffer data
 void disp_buf(uint8_t* buf, int length)
 {
     printf("======\n");

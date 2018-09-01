@@ -1,3 +1,7 @@
+/*
+ * Based on BtStacks ESP32 spp_counter example 
+ */
+
 #ifndef _BT_H
 #define _BT_H
 
