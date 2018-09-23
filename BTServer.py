@@ -1,5 +1,8 @@
 import os
-from bluetooth import *
+
+# Requires pybluez library
+import bluetooth as bt
+#from bluetooth import *
 import time
 # Class for setting up a connection with a server application
 class BTServer:
@@ -13,17 +16,16 @@ class BTServer:
         self.name = match["name"]
         self.host = match["host"]
         print ("connecting to", self.host)
-        self.sock=BluetoothSocket( RFCOMM )
+        self.sock=bt.BluetoothSocket( bt.RFCOMM )
         # for L2CAP 
         # self.sock.connect(self.host, self.port)
         # for RFCOMM
         self.sock.connect((self.host, self.port))
-        packets = 0
 
     # returns list of servers with the matching service
     def find(self, _name = None, _uuid = None):
         try:
-            service_matches = find_service(uuid = _uuid)
+            service_matches = bt.find_service(uuid = _uuid)
             if len(service_matches) == 0:
                 print ("couldn't find the service")
                 return [] 
